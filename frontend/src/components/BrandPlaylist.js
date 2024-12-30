@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 function BrandPlaylist() {
-  const navigate = useNavigate();
-  const { token, loading: authLoading, checkAuth } = useAuth();
+  const { token } = useAuth();
   const [brands, setBrands] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [brandProfile, setBrandProfile] = useState(null);
@@ -12,74 +11,57 @@ function BrandPlaylist() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchBrands = useCallback(async () => {
-    if (!token) return;
+  useEffect(() => {
+    fetchBrands();
+  }, []);
 
+  const fetchBrands = async () => {
     try {
       setLoading(true);
-      setError('');
       const response = await fetch('http://localhost:3001/brands');
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch brands: ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error('Failed to fetch brands');
       const data = await response.json();
       setBrands(data.brands || []);
     } catch (error) {
-      console.error('Error fetching brands:', error);
-      setError('Failed to load brands. Please try again later.');
+      setError('Failed to load brands');
     } finally {
       setLoading(false);
     }
-  }, [token]);
-
-  useEffect(() => {
-    const init = async () => {
-      const isAuthenticated = await checkAuth();
-      if (isAuthenticated) {
-        fetchBrands();
-      }
-    };
-
-    init();
-  }, [checkAuth, fetchBrands]);
+  };
 
   const handleBrandSelect = async (brandId) => {
-    if (!brandId || !token) return;
+    if (!brandId) return;
     
     try {
       setLoading(true);
       setError('');
       
+      // Get brand profile
       const response = await fetch(`http://localhost:3001/brands/${brandId}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch brand profile: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setBrandProfile(data);
+      if (!response.ok) throw new Error('Failed to fetch brand profile');
+      const profile = await response.json();
+      setBrandProfile(profile);
       setSelectedBrand(brandId);
       
-      // Get music suggestions from Anthropic
+      // Get music suggestions
       const suggestionsResponse = await fetch('http://localhost:3001/brands/suggest-music', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(profile)
       });
       
       if (!suggestionsResponse.ok) {
-        throw new Error(`Failed to get music suggestions: ${suggestionsResponse.statusText}`);
+        throw new Error('Failed to get music suggestions');
       }
       
       const suggestionsData = await suggestionsResponse.json();
       setSuggestions(suggestionsData.suggestions || []);
     } catch (error) {
       console.error('Error:', error);
-      setError('Failed to load brand profile or get music suggestions. Please try again later.');
+      setError(error.message);
       setBrandProfile(null);
       setSuggestions([]);
     } finally {
@@ -88,70 +70,37 @@ function BrandPlaylist() {
   };
 
   const createPlaylist = async () => {
-    if (!token) {
-      setError('Please log in to create a playlist');
-      return;
-    }
+    if (!token || !selectedBrand) return;
 
     try {
       setLoading(true);
-      setError('');
-      
       const response = await fetch('http://localhost:3001/brands/create-playlist', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          token,
           brand_id: selectedBrand,
-          suggestions: suggestions
+          suggestions
         })
       });
       
-      if (!response.ok) {
-        throw new Error(`Failed to create playlist: ${response.statusText}`);
-      }
-      
+      if (!response.ok) throw new Error('Failed to create playlist');
       const data = await response.json();
-      alert(`Playlist created successfully! You can find it at: ${data.playlist_url}`);
+      alert(`Playlist created! Check your Spotify account.\nPlaylist URL: ${data.playlist_url}`);
     } catch (error) {
-      console.error('Error:', error);
-      setError('Failed to create playlist. Please try again later.');
+      setError('Failed to create playlist');
     } finally {
       setLoading(false);
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!token) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Please Log In</h2>
-          <Link to="/login" className="text-green-500 hover:text-green-600">
-            Go to Login
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Brand-Based Playlist Creator</h2>
-        <Link
-          to="/dashboard"
-          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-        >
+        <Link to="/dashboard" className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
           Back to Dashboard
         </Link>
       </div>
@@ -162,7 +111,6 @@ function BrandPlaylist() {
         </div>
       )}
 
-      {/* Brand Selection */}
       <div className="mb-8">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Select a Brand
@@ -188,7 +136,6 @@ function BrandPlaylist() {
         </div>
       )}
 
-      {/* Brand Profile Display */}
       {brandProfile && !loading && (
         <div className="mb-8 p-4 bg-white rounded-lg shadow">
           <h3 className="text-xl font-semibold mb-4">{brandProfile.brand}</h3>
@@ -202,18 +149,10 @@ function BrandPlaylist() {
                 <li key={index}>{item}</li>
               ))}
             </ul>
-
-            <h4 className="font-medium mt-4">Cultural Values</h4>
-            <ul className="list-disc pl-5">
-              {brandProfile.cultural_positioning?.core_values?.map((value, index) => (
-                <li key={index}>{value}</li>
-              ))}
-            </ul>
           </div>
         </div>
       )}
 
-      {/* Music Suggestions */}
       {suggestions.length > 0 && !loading && (
         <div className="mb-8">
           <h3 className="text-xl font-semibold mb-4">Suggested Tracks</h3>
@@ -232,7 +171,7 @@ function BrandPlaylist() {
             disabled={loading}
             className="mt-4 px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400"
           >
-            {loading ? 'Creating...' : 'Create Playlist'}
+            Create Playlist
           </button>
         </div>
       )}

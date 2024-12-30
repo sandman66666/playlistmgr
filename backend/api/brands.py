@@ -9,109 +9,109 @@ from dotenv import load_dotenv
 import logging
 
 load_dotenv()
-
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# Get the path to the brand_profiles directory
 BRAND_PROFILES_DIR = Path(__file__).parent.parent / "data" / "brand_profiles"
+
+@router.get("")
+async def get_all_brands():
+    try:
+        if not BRAND_PROFILES_DIR.exists():
+            BRAND_PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+            return {"brands": []}
+        
+        brand_files = list(BRAND_PROFILES_DIR.glob("*.json"))
+        brands = []
+        
+        for file in brand_files:
+            with open(file, 'r') as f:
+                brand_data = json.load(f)
+                brands.append({
+                    "id": file.stem,
+                    "name": brand_data.get("brand", file.stem),
+                    "description": brand_data.get("brand_essence", {}).get("core_identity", "")
+                })
+        
+        return {"brands": brands}
+    except Exception as e:
+        logger.error(f"Error getting brands: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{brand_id}")
+async def get_brand_profile(brand_id: str):
+    try:
+        file_path = BRAND_PROFILES_DIR / f"{brand_id}.json"
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"Brand not found: {brand_id}")
+        
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error getting brand {brand_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/suggest-music")
 async def suggest_music(brand_profile: Dict):
-    """Get music suggestions from Anthropic based on brand profile"""
     try:
-        logger.info("Initializing Anthropic client")
+        logger.info("Starting suggest-music endpoint")
+        logger.info(f"Brand Profile: {brand_profile}")
+        
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
+            logger.error("ANTHROPIC_API_KEY not found")
+            raise ValueError("ANTHROPIC_API_KEY not set")
+            
+        logger.info("Got API key, initializing Anthropic client")
+        client = Anthropic(api_key=api_key.strip())
         
-        client = Anthropic(
-            api_key=api_key.strip()  # Ensure no whitespace
-        )
-        logger.info("Anthropic client initialized successfully")
+        prompt = f"""You are a music curator. Suggest 10 songs that match this brand:
+        Brand: {brand_profile.get('brand')}
+        Identity: {brand_profile.get('brand_essence', {}).get('core_identity', '')}
         
-        # Construct the prompt with the required format
-        prompt = f"""\n\nHuman: You are a music curator with deep knowledge of music and brand aesthetics. Analyze this brand profile and suggest 10 songs that perfectly embody the brand's aesthetic, values, and cultural positioning.
-
-        Brand Profile:
-        Name: {brand_profile.get('brand')}
-        Core Identity: {brand_profile.get('brand_essence', {}).get('core_identity', '')}
-        Aesthetic: {brand_profile.get('aesthetic_pillars', {}).get('visual_language', [])}
-        Cultural Values: {brand_profile.get('cultural_positioning', {}).get('core_values', [])}
-
-        For each song, explain how it specifically aligns with the brand's values and aesthetic. 
-        Consider factors like:
-        - Production quality and sound matching the brand's sophistication level
-        - Lyrical themes aligning with brand values
-        - Artist image and cultural positioning
-        - Emotional resonance with the target audience
-        - Cultural relevance and zeitgeist alignment
-
-        Format each suggestion as:
+        Format as:
         Song: [title]
         Artist: [name]
-        Why it fits: [detailed explanation connecting to brand attributes]
-
-        \n\nAssistant: I'll help you find songs that perfectly match GUCCI's brand identity. Here are 10 carefully curated suggestions:"""
-
-        logger.info("Creating completion with Anthropic")
-        response = client.completions.create(
-            model="claude-2",
-            prompt=prompt,
-            max_tokens_to_sample=1500,
-            temperature=0.7,
-            stop_sequences=["\n\nHuman:"]
+        Why it fits: [explanation]"""
+        
+        logger.info("Sending request to Anthropic")
+        response = client.messages.create(
+            model="claude-3-opus-20240229",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}]
         )
-        logger.info("Completion created successfully")
+        
+        logger.info("Got response from Anthropic")
+        logger.info(f"Response: {response.content}")
+        
+        suggestions = []
+        song_sections = response.content.split('\n\n')
+        
+        for section in song_sections:
+            if 'Song:' in section and 'Artist:' in section:
+                lines = section.split('\n')
+                suggestions.append({
+                    "track": lines[0].replace('Song:', '').strip(),
+                    "artist": lines[1].replace('Artist:', '').strip(),
+                    "reason": ' '.join(lines[2:]).replace('Why it fits:', '').strip()
+                })
 
-        # Parse the response into structured suggestions
-        try:
-            logger.info("Parsing Anthropic response")
-            response_text = response.completion
-            # Split response into sections for each song
-            song_sections = response_text.split('\n\n')
-            suggestions = []
-            
-            for section in song_sections:
-                if 'Song:' in section and 'Artist:' in section:
-                    lines = section.split('\n')
-                    suggestion = {
-                        "track": lines[0].replace('Song:', '').strip(),
-                        "artist": lines[1].replace('Artist:', '').strip(),
-                        "reason": ' '.join(lines[2:]).replace('Why it fits:', '').strip()
-                    }
-                    suggestions.append(suggestion)
-            
-            logger.info(f"Successfully parsed {len(suggestions)} suggestions")
-            return {"suggestions": suggestions}
-
-        except Exception as parse_error:
-            logger.error(f"Error parsing response: {parse_error}")
-            logger.error(f"Raw response: {response.completion}")
-            return {"error": "Failed to parse suggestions", "raw_response": response_text}
+        return {"suggestions": suggestions}
 
     except Exception as e:
-        logger.error(f"Error in suggest_music: {str(e)}")
-        logger.exception("Full traceback:")
-        raise HTTPException(status_code=500, detail=f"Error getting music suggestions: {str(e)}")
+        logger.error(f"Error in suggest-music: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/create-playlist")
 async def create_brand_playlist(token: str, brand_id: str, suggestions: List[Dict]):
-    """Create a Spotify playlist from the suggestions"""
     try:
-        # Get brand profile
         brand_profile = await get_brand_profile(brand_id)
-        
-        # Initialize Spotify client
         sp = spotipy.Spotify(auth=token)
         
-        # Create playlist
         user_id = sp.current_user()["id"]
         playlist_name = f"{brand_profile['brand']} Brand Playlist"
-        description = f"A curated playlist capturing {brand_profile['brand']}'s aesthetic and values"
+        description = f"A curated playlist for {brand_profile['brand']}"
         
         playlist = sp.user_playlist_create(
             user_id,
@@ -120,7 +120,6 @@ async def create_brand_playlist(token: str, brand_id: str, suggestions: List[Dic
             description=description
         )
         
-        # Search and add tracks
         track_uris = []
         not_found = []
         
@@ -133,7 +132,6 @@ async def create_brand_playlist(token: str, brand_id: str, suggestions: List[Dic
             else:
                 not_found.append(f"{suggestion['track']} by {suggestion['artist']}")
         
-        # Add found tracks to playlist
         if track_uris:
             sp.playlist_add_items(playlist['id'], track_uris)
         
@@ -145,97 +143,54 @@ async def create_brand_playlist(token: str, brand_id: str, suggestions: List[Dic
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating playlist: {str(e)}")
+        logger.error(f"Error creating playlist: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/brands")
-async def get_all_brands():
-    """Get a list of all available brand profiles"""
-    try:
-        # Ensure the directory exists
-        if not BRAND_PROFILES_DIR.exists():
-            return {"brands": []}
-        
-        # Get all JSON files in the brand_profiles directory
-        brand_files = list(BRAND_PROFILES_DIR.glob("*.json"))
-        brands = []
-        
-        for file in brand_files:
-            with open(file, 'r') as f:
-                brand_data = json.load(f)
-                brands.append({
-                    "id": file.stem,  # filename without extension
-                    "name": brand_data.get("brand", file.stem),
-                    "description": brand_data.get("brand_essence", {}).get("core_identity", "")
-                })
-        
-        return {"brands": brands}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading brand profiles: {str(e)}")
-
-@router.get("/brands/{brand_id}")
-async def get_brand_profile(brand_id: str):
-    """Get a specific brand profile by ID"""
-    try:
-        file_path = BRAND_PROFILES_DIR / f"{brand_id}.json"
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail=f"Brand profile not found: {brand_id}")
-        
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading brand profile: {str(e)}")
-
-@router.post("/brands")
+@router.post("")
 async def create_brand_profile(brand_data: Dict):
-    """Create a new brand profile"""
     try:
         if "brand" not in brand_data:
-            raise HTTPException(status_code=400, detail="Brand name is required")
+            raise HTTPException(status_code=400, detail="Brand name required")
         
-        # Create directory if it doesn't exist
         BRAND_PROFILES_DIR.mkdir(parents=True, exist_ok=True)
-        
-        # Generate a filename-safe brand ID
         brand_id = brand_data["brand"].lower().replace(" ", "_")
         file_path = BRAND_PROFILES_DIR / f"{brand_id}.json"
         
-        # Don't overwrite existing profiles
         if file_path.exists():
-            raise HTTPException(status_code=400, detail=f"Brand profile already exists: {brand_id}")
+            raise HTTPException(status_code=400, detail=f"Brand exists: {brand_id}")
         
         with open(file_path, 'w') as f:
             json.dump(brand_data, f, indent=2)
         
-        return {"message": "Brand profile created successfully", "brand_id": brand_id}
-    except HTTPException:
-        raise
+        return {"message": "Brand profile created", "brand_id": brand_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating brand profile: {str(e)}")
+        logger.error(f"Error creating brand: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/brands/{brand_id}")
+@router.put("/{brand_id}")
 async def update_brand_profile(brand_id: str, brand_data: Dict):
-    """Update an existing brand profile"""
     try:
         file_path = BRAND_PROFILES_DIR / f"{brand_id}.json"
         if not file_path.exists():
-            raise HTTPException(status_code=404, detail=f"Brand profile not found: {brand_id}")
+            raise HTTPException(status_code=404, detail=f"Brand not found: {brand_id}")
         
         with open(file_path, 'w') as f:
             json.dump(brand_data, f, indent=2)
         
-        return {"message": "Brand profile updated successfully"}
+        return {"message": "Brand profile updated"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating brand profile: {str(e)}")
+        logger.error(f"Error updating brand {brand_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/brands/{brand_id}")
+@router.delete("/{brand_id}")
 async def delete_brand_profile(brand_id: str):
-    """Delete a brand profile"""
     try:
         file_path = BRAND_PROFILES_DIR / f"{brand_id}.json"
         if not file_path.exists():
-            raise HTTPException(status_code=404, detail=f"Brand profile not found: {brand_id}")
+            raise HTTPException(status_code=404, detail=f"Brand not found: {brand_id}")
         
         os.remove(file_path)
-        return {"message": "Brand profile deleted successfully"}
+        return {"message": "Brand profile deleted"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error deleting brand profile: {str(e)}")
+        logger.error(f"Error deleting brand {brand_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
