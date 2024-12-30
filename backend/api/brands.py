@@ -121,6 +121,41 @@ Why it fits: [one sentence reason]
         logger.error(f"Error in suggest-music: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+def find_existing_playlist(sp: spotipy.Spotify, playlist_name: str) -> Dict:
+    """
+    Helper function to find an existing playlist by name.
+    Returns the playlist data if found, None otherwise.
+    """
+    try:
+        logger.info(f"Searching for existing playlist: {playlist_name}")
+        offset = 0
+        limit = 50
+        
+        while True:
+            playlists = sp.current_user_playlists(limit=limit, offset=offset)
+            
+            if not playlists['items']:
+                logger.info("No more playlists to check")
+                break
+                
+            for playlist in playlists['items']:
+                # Case-insensitive comparison
+                if playlist['name'].lower() == playlist_name.lower():
+                    logger.info(f"Found existing playlist: {playlist['id']}")
+                    return playlist
+            
+            if not playlists['next']:
+                break
+                
+            offset += limit
+            
+        logger.info("No existing playlist found")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error finding existing playlist: {str(e)}")
+        return None
+
 @router.post("/create-playlist")
 async def create_brand_playlist(payload: Dict):
     """
@@ -154,20 +189,8 @@ async def create_brand_playlist(payload: Dict):
         playlist_name = f"{brand_profile['brand']} Brand Playlist"
         description = f"A curated playlist for {brand_profile['brand']}"
 
-        # Check if playlist exists
-        existing_playlist = None
-        limit = 50
-        offset = 0
-        while True:
-            playlists = sp.current_user_playlists(limit=limit, offset=offset)
-            for pl in playlists['items']:
-                if pl['name'] == playlist_name:
-                    existing_playlist = pl
-                    break
-
-            if existing_playlist or not playlists['next']:
-                break
-            offset += limit
+        # Search for existing playlist
+        existing_playlist = find_existing_playlist(sp, playlist_name)
 
         # Search for new tracks
         new_track_uris = []
@@ -192,30 +215,37 @@ async def create_brand_playlist(payload: Dict):
             current_tracks = []
             results = sp.playlist_items(playlist_id)
             while results:
-                current_tracks.extend([item['track']['uri'] for item in results['items']])
+                current_tracks.extend([item['track']['uri'] for item in results['items'] if item['track']])
                 if results['next']:
                     results = sp.next(results)
                 else:
                     break
 
             total_tracks = len(current_tracks)
-            tracks_to_keep = total_tracks // 2  # Keep half of the existing tracks
-            
-            if current_tracks:
-                # Randomly select tracks to keep
-                tracks_to_keep = random.sample(current_tracks, min(tracks_to_keep, len(current_tracks)))
+            if total_tracks > 0:
+                # Keep half of the existing tracks
+                tracks_to_keep = total_tracks // 2
+                kept_tracks = random.sample(current_tracks, min(tracks_to_keep, len(current_tracks)))
                 
-                # Remove all tracks from playlist
-                sp.playlist_remove_all_occurrences_of_items(playlist_id, current_tracks)
+                # Remove all current tracks
+                logger.info("Removing all tracks from playlist")
+                sp.playlist_replace_items(playlist_id, [])
                 
-                # Add back the tracks we want to keep
-                sp.playlist_add_items(playlist_id, tracks_to_keep)
+                # Add back kept tracks
+                logger.info(f"Adding back {len(kept_tracks)} kept tracks")
+                if kept_tracks:
+                    sp.playlist_add_items(playlist_id, kept_tracks)
                 
                 # Add new tracks to match original count
-                remaining_slots = total_tracks - len(tracks_to_keep)
+                remaining_slots = total_tracks - len(kept_tracks)
                 new_tracks_to_add = new_track_uris[:remaining_slots]
                 if new_tracks_to_add:
+                    logger.info(f"Adding {len(new_tracks_to_add)} new tracks")
                     sp.playlist_add_items(playlist_id, new_tracks_to_add)
+            else:
+                # If playlist is empty, just add all new tracks
+                if new_track_uris:
+                    sp.playlist_add_items(playlist_id, new_track_uris)
             
         else:
             logger.info("Creating new playlist")
