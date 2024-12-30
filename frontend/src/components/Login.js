@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 
 function Login() {
   const [debugLog, setDebugLog] = useState(() => {
-    // Initialize from localStorage if exists
     const saved = localStorage.getItem('spotify_debug_log');
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
-    // Check URL parameters on component mount
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const error = urlParams.get('error');
