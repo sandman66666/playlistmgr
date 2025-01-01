@@ -1,93 +1,97 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 function Login() {
-  const [debugLog, setDebugLog] = useState(() => {
-    const saved = localStorage.getItem('spotify_debug_log');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { token } = useAuth();
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const error = urlParams.get('error');
+  // If already logged in, redirect to dashboard
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  const initiateLogin = useCallback(async () => {
+    if (loading) return;
     
-    if (code) {
-      addDebugMessage(`Received code parameter: ${code.substring(0, 10)}...`);
-    }
-    if (error) {
-      addDebugMessage(`Received error: ${error}`);
-    }
-  }, []);
-
-  const addDebugMessage = (message) => {
-    const newLog = [...debugLog, `${new Date().toISOString()}: ${message}`];
-    setDebugLog(newLog);
-    localStorage.setItem('spotify_debug_log', JSON.stringify(newLog));
-  };
-
-  const clearDebugLog = () => {
-    setDebugLog([]);
-    localStorage.removeItem('spotify_debug_log');
-  };
-
-  const handleLogin = async () => {
     try {
-      addDebugMessage('Starting login process...');
-      
+      setError('');
+      setLoading(true);
+
+      // Get login URL from backend
       const response = await fetch('http://localhost:3001/auth/login');
-      addDebugMessage(`Response status: ${response.status}`);
-      
-      const data = await response.json();
-      addDebugMessage(`Received data: ${JSON.stringify(data)}`);
-      
-      if (data.auth_url) {
-        addDebugMessage(`Redirecting to: ${data.auth_url}`);
-        window.location.href = data.auth_url;
-      } else {
-        addDebugMessage('No auth_url in response');
+      if (!response.ok) {
+        throw new Error('Failed to get login URL');
       }
+
+      const data = await response.json();
+      if (!data.auth_url) {
+        throw new Error('Invalid login URL');
+      }
+
+      // Extract state parameter from auth_url
+      const url = new URL(data.auth_url);
+      const state = url.searchParams.get('state');
+      if (state) {
+        // Save state in localStorage for CSRF protection
+        localStorage.setItem('spotify_auth_state', state);
+      }
+
+      // Redirect to Spotify login
+      window.location.href = data.auth_url;
     } catch (error) {
-      addDebugMessage(`Error: ${error.message}`);
       console.error('Login error:', error);
+      setError(error.message);
+      setLoading(false);
     }
-  };
+  }, [loading]);
+
+  if (loading && !error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="text-xl mb-4">
+            Connecting to Spotify...
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="text-xl text-red-600 mb-4">
+            Failed to connect to Spotify: {error}
+          </div>
+          <button
+            onClick={() => {
+              setError('');
+              initiateLogin();
+            }}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-center mb-6">Spotify Playlist Manager</h1>
-        
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-8">Spotify Playlist Manager</h1>
         <button
-          onClick={handleLogin}
-          className="w-full px-6 py-3 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors"
+          onClick={initiateLogin}
+          disabled={loading}
+          className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          Login with Spotify
+          Connect with Spotify
         </button>
-
-        {/* Debug Controls */}
-        <div className="mt-4 flex justify-between">
-          <button
-            onClick={clearDebugLog}
-            className="text-sm text-red-500 hover:text-red-600"
-          >
-            Clear Debug Log
-          </button>
-          <span className="text-sm text-gray-500">
-            {debugLog.length} log entries
-          </span>
-        </div>
-
-        {/* Debug Log Display */}
-        <div className="mt-4">
-          <h2 className="text-lg font-semibold mb-2">Debug Log:</h2>
-          <div className="bg-gray-100 p-4 rounded-lg max-h-60 overflow-auto">
-            {debugLog.map((log, index) => (
-              <div key={index} className="text-sm font-mono mb-1 break-all whitespace-pre-wrap">
-                {log}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

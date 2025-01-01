@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from typing import Dict, List
 import json
 import os
@@ -121,53 +121,21 @@ Why it fits: [one sentence reason]
         logger.error(f"Error in suggest-music: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-def find_existing_playlist(sp: spotipy.Spotify, playlist_name: str) -> Dict:
-    """
-    Helper function to find an existing playlist by name.
-    Returns the playlist data if found, None otherwise.
-    """
-    try:
-        logger.info(f"Searching for existing playlist: {playlist_name}")
-        offset = 0
-        limit = 50
-        
-        while True:
-            playlists = sp.current_user_playlists(limit=limit, offset=offset)
-            
-            if not playlists['items']:
-                logger.info("No more playlists to check")
-                break
-                
-            for playlist in playlists['items']:
-                # Case-insensitive comparison
-                if playlist['name'].lower() == playlist_name.lower():
-                    logger.info(f"Found existing playlist: {playlist['id']}")
-                    return playlist
-            
-            if not playlists['next']:
-                break
-                
-            offset += limit
-            
-        logger.info("No existing playlist found")
-        return None
-        
-    except Exception as e:
-        logger.error(f"Error finding existing playlist: {str(e)}")
-        return None
-
 @router.post("/create-playlist")
-async def create_brand_playlist(payload: Dict):
+async def create_brand_playlist(payload: Dict, authorization: str = Header(None)):
     """
     If a playlist exists, replace half of its songs with new ones while maintaining the same total count.
     If no playlist exists, create a new one with all suggested songs.
     """
     try:
-        token = payload.get("token")
+        if not authorization:
+            raise HTTPException(status_code=401, detail="No authorization header")
+            
+        token = authorization.replace('Bearer ', '')
         brand_id = payload.get("brand_id")
         suggestions = payload.get("suggestions")
 
-        if not all([token, brand_id, suggestions]):
+        if not all([brand_id, suggestions]):
             raise HTTPException(status_code=422, detail="Missing required fields")
 
         file_path = BRAND_PROFILES_DIR / f"{brand_id}.json"
@@ -182,6 +150,7 @@ async def create_brand_playlist(payload: Dict):
         
         try:
             user_id = sp.current_user()["id"]
+            logger.info(f"Creating playlist for user: {user_id}")
         except Exception as e:
             logger.error(f"Error getting user profile: {str(e)}")
             raise HTTPException(status_code=401, detail="Invalid or expired token")
@@ -190,7 +159,24 @@ async def create_brand_playlist(payload: Dict):
         description = f"A curated playlist for {brand_profile['brand']}"
 
         # Search for existing playlist
-        existing_playlist = find_existing_playlist(sp, playlist_name)
+        existing_playlist = None
+        offset = 0
+        limit = 50
+        
+        while True:
+            playlists = sp.user_playlists(user_id, limit=limit, offset=offset)
+            logger.info(f"Checking batch of {len(playlists['items'])} playlists")
+            
+            for pl in playlists['items']:
+                if pl['name'] == playlist_name:
+                    existing_playlist = pl
+                    logger.info(f"Found existing playlist: {pl['id']}")
+                    break
+
+            if existing_playlist or not playlists['next']:
+                break
+                
+            offset += limit
 
         # Search for new tracks
         new_track_uris = []
@@ -227,21 +213,10 @@ async def create_brand_playlist(payload: Dict):
                 tracks_to_keep = total_tracks // 2
                 kept_tracks = random.sample(current_tracks, min(tracks_to_keep, len(current_tracks)))
                 
-                # Remove all current tracks
-                logger.info("Removing all tracks from playlist")
-                sp.playlist_replace_items(playlist_id, [])
-                
-                # Add back kept tracks
-                logger.info(f"Adding back {len(kept_tracks)} kept tracks")
-                if kept_tracks:
-                    sp.playlist_add_items(playlist_id, kept_tracks)
-                
-                # Add new tracks to match original count
-                remaining_slots = total_tracks - len(kept_tracks)
-                new_tracks_to_add = new_track_uris[:remaining_slots]
-                if new_tracks_to_add:
-                    logger.info(f"Adding {len(new_tracks_to_add)} new tracks")
-                    sp.playlist_add_items(playlist_id, new_tracks_to_add)
+                # Remove all current tracks and add back kept tracks + new tracks
+                logger.info(f"Replacing playlist tracks. Keeping {len(kept_tracks)} existing tracks")
+                all_tracks = kept_tracks + new_track_uris[:total_tracks - len(kept_tracks)]
+                sp.playlist_replace_items(playlist_id, all_tracks)
             else:
                 # If playlist is empty, just add all new tracks
                 if new_track_uris:

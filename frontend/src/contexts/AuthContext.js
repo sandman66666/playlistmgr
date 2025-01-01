@@ -1,93 +1,94 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import debounce from 'lodash/debounce';
 
 const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(() => {
-    // Try to get existing token from localStorage
-    const savedToken = localStorage.getItem('spotify_token');
-    if (savedToken) {
-      try {
-        // Verify token format
-        const tokenData = JSON.parse(savedToken);
-        return tokenData.access_token;
-      } catch (e) {
-        // If token is not in JSON format, it might be the raw token
-        return savedToken;
-      }
-    }
-    return null;
-  });
-  
+// Cache duration in milliseconds (5 minutes)
+const CACHE_DURATION = 5 * 60 * 1000;
+
+// Debounce delay for token validation (1 second)
+const VALIDATION_DELAY = 1000;
+
+export function AuthProvider({ children }) {
+  const [token, setToken] = useState(null);
+  const [tokenInfo, setTokenInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const lastValidationRef = useRef(0);
   const navigate = useNavigate();
 
+  // Initialize token from localStorage
   useEffect(() => {
-    const handleCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const error = urlParams.get('error');
+    const storedToken = localStorage.getItem('spotify_token');
+    if (storedToken) {
+      try {
+        const parsedToken = JSON.parse(storedToken);
+        setTokenInfo(parsedToken);
+        setToken(parsedToken.access_token);
+      } catch (e) {
+        console.error('Error parsing stored token:', e);
+        localStorage.removeItem('spotify_token');
+      }
+    }
+    setLoading(false);
+  }, []);
 
-      if (error) {
-        console.error('Auth error:', error);
-        navigate('/login');
-        setLoading(false);
-        return;
+  // Token validation function
+  const validateTokenFn = async (tokenToValidate, tokenInfoToValidate) => {
+    try {
+      const now = Date.now();
+      // Skip validation if within cache duration
+      if (now - lastValidationRef.current < CACHE_DURATION) {
+        return true;
       }
 
-      if (code && !token) {
-        try {
-          console.log('Exchanging code for token...');
-          const response = await fetch(`http://localhost:3001/auth/callback?code=${code}`);
-          
-          if (!response.ok) {
-            throw new Error(`Failed to exchange code: ${response.statusText}`);
-          }
+      const response = await fetch('http://localhost:3001/auth/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${tokenToValidate}`
+        },
+        body: JSON.stringify({ token_info: tokenInfoToValidate })
+      });
 
-          const data = await response.json();
-          console.log('Received token data:', { ...data, access_token: '***' });
+      const data = await response.json();
+      lastValidationRef.current = now;
 
-          if (data.access_token) {
-            // Store the complete token data
-            localStorage.setItem('spotify_token', JSON.stringify(data));
-            setToken(data.access_token);
-            navigate('/dashboard');
-          } else {
-            throw new Error('No access token in response');
-          }
-        } catch (error) {
-          console.error('Error exchanging code for token:', error);
-          navigate('/login');
-        }
+      if (data.token_info) {
+        localStorage.setItem('spotify_token', JSON.stringify(data.token_info));
+        setTokenInfo(data.token_info);
+        setToken(data.token_info.access_token);
       }
-      setLoading(false);
-    };
 
-    handleCallback();
-  }, [token, navigate]);
-
-  const logout = () => {
-    setToken(null);
-    localStorage.removeItem('spotify_token');
-    navigate('/login');
+      return data.valid;
+    } catch (e) {
+      console.error('Token validation error:', e);
+      return false;
+    }
   };
 
-  const refreshToken = async () => {
+  // Debounced validate token
+  const validateToken = useCallback(
+    debounce(validateTokenFn, VALIDATION_DELAY),
+    []
+  );
+
+  const refreshToken = useCallback(async () => {
+    if (!tokenInfo?.refresh_token) {
+      console.error('No refresh token available');
+      return false;
+    }
+
     try {
-      const tokenData = localStorage.getItem('spotify_token');
-      if (!tokenData) return null;
-
-      const parsedToken = JSON.parse(tokenData);
-      if (!parsedToken.refresh_token) return null;
-
       const response = await fetch('http://localhost:3001/auth/refresh', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          refresh_token: parsedToken.refresh_token
+          refresh_token: tokenInfo.refresh_token
         })
       });
 
@@ -95,62 +96,82 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Failed to refresh token');
       }
 
-      const newTokenData = await response.json();
-      localStorage.setItem('spotify_token', JSON.stringify(newTokenData));
-      setToken(newTokenData.access_token);
-      return newTokenData.access_token;
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-      logout();
+      const newTokenInfo = await response.json();
+      localStorage.setItem('spotify_token', JSON.stringify(newTokenInfo));
+      setTokenInfo(newTokenInfo);
+      setToken(newTokenInfo.access_token);
+      return true;
+    } catch (e) {
+      console.error('Token refresh error:', e);
+      return false;
+    }
+  }, [token, tokenInfo?.refresh_token]); // Only depend on refresh_token
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('spotify_token');
+    setToken(null);
+    setTokenInfo(null);
+    navigate('/login');
+  }, [navigate]);
+
+  const getAuthHeader = useCallback(async () => {
+    if (!token || !tokenInfo) {
       return null;
     }
-  };
 
-  const getAccessToken = async () => {
     try {
-      const tokenData = localStorage.getItem('spotify_token');
-      if (!tokenData) return null;
-
-      const parsedToken = JSON.parse(tokenData);
-      if (!parsedToken.access_token) return null;
-
-      // Check if token is expired
-      const expiresAt = parsedToken.expires_at;
-      if (expiresAt && Date.now() >= expiresAt * 1000) {
-        // Token is expired, try to refresh
-        return await refreshToken();
+      const isValid = await validateToken(token, tokenInfo);
+      if (!isValid) {
+        const refreshed = await refreshToken();
+        if (!refreshed) {
+          logout();
+          return null;
+        }
       }
-
-      return parsedToken.access_token;
-    } catch (error) {
-      console.error('Error getting access token:', error);
+      return `Bearer ${token}`;
+    } catch (e) {
+      console.error('Error getting auth header:', e);
       return null;
     }
-  };
+  }, [token, tokenInfo, validateToken, refreshToken, logout]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-xl">Loading...</div>
-    </div>;
-  }
+  const login = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch('http://localhost:3001/auth/login');
+      const data = await response.json();
+      window.location.href = data.auth_url;
+    } catch (e) {
+      console.error('Login error:', e);
+      setError('Failed to initiate login');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const value = {
+    token,
+    tokenInfo,
+    loading,
+    error,
+    login,
+    logout,
+    setTokenInfo,
+    getAuthHeader
+  };
 
   return (
-    <AuthContext.Provider value={{ 
-      token, 
-      setToken, 
-      logout,
-      refreshToken,
-      getAccessToken
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}

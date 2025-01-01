@@ -1,24 +1,70 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import BrandPlaylist from './components/BrandPlaylist';
-import { AuthProvider } from './contexts/AuthContext';
+import Callback from './components/Callback';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-function App() {
+// Protected Route component
+const ProtectedRoute = ({ children }) => {
+  const { token, loading } = useAuth();
+  const location = useLocation();
+  
+  // Show nothing while checking authentication
+  if (loading) {
+    return null;
+  }
+  
+  if (!token) {
+    // Pass the attempted location to redirect back after login
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  
+  return children;
+};
+
+// App wrapper to provide auth context
+const AppWrapper = () => {
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/callback" element={<Login />} />
-          <Route path="/brands" element={<BrandPlaylist />} />
-          <Route path="/" element={<Navigate to="/login" />} />
-        </Routes>
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+};
+
+// Main App component
+function App() {
+  const { token } = useAuth();
+  
+  return (
+    <Routes>
+      <Route path="/login" element={
+        token ? <Navigate to="/dashboard" replace /> : <Login />
+      } />
+      <Route path="/callback" element={<Callback />} />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/brands" element={
+        <ProtectedRoute>
+          <BrandPlaylist />
+        </ProtectedRoute>
+      } />
+      <Route path="/" element={
+        token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+      } />
+    </Routes>
   );
 }
 
-export default App;
+// Export wrapped version
+export default function Root() {
+  return (
+    <Router>
+      <AppWrapper />
+    </Router>
+  );
+}

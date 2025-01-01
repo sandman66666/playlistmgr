@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import config from '../config';
 
 function BrandPlaylist() {
   const navigate = useNavigate();
-  const { token, getAccessToken } = useAuth();
+  const { token, logout, getAuthHeader } = useAuth();
   const [brands, setBrands] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [brandProfile, setBrandProfile] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [existingPlaylists, setExistingPlaylists] = useState([]);
 
   // 1. Fetch brand list
   const fetchBrands = useCallback(async () => {
@@ -18,7 +20,7 @@ function BrandPlaylist() {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('http://localhost:3001/brands');
+      const response = await fetch(`${config.apiBaseUrl}${config.endpoints.brands.list}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch brands: ${response.statusText}`);
       }
@@ -32,22 +34,55 @@ function BrandPlaylist() {
     }
   }, [token]);
 
-  // 2. On mount or token update, load brand list
+  // 2. Fetch existing playlists
+  const fetchExistingPlaylists = useCallback(async () => {
+    try {
+      const authHeader = await getAuthHeader();
+      if (!authHeader) {
+        throw new Error('No valid token available');
+      }
+
+      const response = await fetch(`${config.apiBaseUrl}${config.endpoints.playlist.user}`, {
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch playlists');
+      }
+      const data = await response.json();
+      setExistingPlaylists(data.playlists || []);
+    } catch (err) {
+      console.error('Error fetching playlists:', err);
+      if (err.message.includes('token')) {
+        logout();
+      }
+    }
+  }, [getAuthHeader, logout]);
+
+  // 3. Load initial data
   useEffect(() => {
     if (token) {
-      fetchBrands();
+      const loadInitialData = async () => {
+        await Promise.all([
+          fetchBrands(),
+          fetchExistingPlaylists()
+        ]);
+      };
+      loadInitialData();
     }
-  }, [token, fetchBrands]);
+  }, [token, fetchBrands, fetchExistingPlaylists]);
 
-  // 3. Handle brand selection
+  // 4. Handle brand selection
   const handleBrandSelect = async (brandId) => {
-    if (!brandId || !token) return;
+    if (!brandId) return;
     try {
       setLoading(true);
       setError('');
 
       // Get brand profile
-      const profileRes = await fetch(`http://localhost:3001/brands/${brandId}`);
+      const profileRes = await fetch(`${config.apiBaseUrl}${config.endpoints.brands.details(brandId)}`);
       if (!profileRes.ok) {
         throw new Error(`Failed to fetch brand profile: ${profileRes.statusText}`);
       }
@@ -56,7 +91,7 @@ function BrandPlaylist() {
       setSelectedBrand(brandId);
 
       // Get music suggestions from Anthropic
-      const suggestRes = await fetch('http://localhost:3001/brands/suggest-music', {
+      const suggestRes = await fetch(`${config.apiBaseUrl}${config.endpoints.brands.suggestMusic}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profileData),
@@ -76,39 +111,24 @@ function BrandPlaylist() {
     }
   };
 
-  // 4. Create Spotify playlist
+  // 5. Create or update Spotify playlist
   const createPlaylist = async () => {
-    if (!token) {
-      setError('Please log in to create a playlist');
-      return;
-    }
-    if (!selectedBrand) {
-      setError('Please select a brand first');
-      return;
-    }
-    if (!suggestions || suggestions.length === 0) {
-      setError('No songs to add to playlist');
-      return;
-    }
-
     try {
       setLoading(true);
       setError('');
 
-      // Get fresh access token
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        throw new Error('Failed to get access token');
+      const authHeader = await getAuthHeader();
+      if (!authHeader) {
+        throw new Error('No valid token available');
       }
       
-      const response = await fetch('http://localhost:3001/brands/create-playlist', {
+      const response = await fetch(`${config.apiBaseUrl}${config.endpoints.brands.createPlaylist}`, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          token: accessToken,
           brand_id: selectedBrand,
           suggestions: suggestions
         })
@@ -120,10 +140,18 @@ function BrandPlaylist() {
       }
 
       const data = await response.json();
-      alert(`Playlist created successfully! You can find it at: ${data.playlist_url}`);
+      
+      // Refresh playlists after creation/update
+      await fetchExistingPlaylists();
+      
+      alert(`Playlist ${data.playlist_url ? 'updated' : 'created'} successfully! You can find it at: ${data.playlist_url}`);
     } catch (err) {
       console.error('Error:', err);
-      setError(err.message || 'Failed to create playlist. Please try again later.');
+      if (err.message.includes('token')) {
+        logout();
+      } else {
+        setError(err.message || 'Failed to create playlist. Please try again later.');
+      }
     } finally {
       setLoading(false);
     }
@@ -218,7 +246,7 @@ function BrandPlaylist() {
             disabled={loading}
             className="mt-4 px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400"
           >
-            {loading ? 'Creating...' : 'Create Playlist'}
+            {loading ? 'Creating...' : 'Create/Update Playlist'}
           </button>
         </div>
       )}
