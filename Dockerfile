@@ -27,13 +27,14 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend/ backend/
 
 # Copy frontend build to backend static directory
-COPY --from=frontend-build /app/frontend/build/. /app/backend/static/
+COPY --from=frontend-build /app/frontend/build/ /app/backend/static/
 
 # Debug: List contents of static directory
-RUN ls -la /app/backend/static/
+RUN echo "Contents of /app/backend/static:" && \
+    ls -la /app/backend/static/
 
 # Expose port
 EXPOSE 8000
 
 # Start the application
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "debug"]

@@ -35,34 +35,47 @@ app.include_router(playlist.router, prefix="/playlist", tags=["playlist"])
 app.include_router(search.router, prefix="/search", tags=["search"])
 app.include_router(brands.router, prefix="/brands", tags=["brands"])
 
-# Ensure static directory exists
-static_dir = os.path.join(os.path.dirname(__file__), "static")
+# Get the absolute path to the static directory
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(static_dir, exist_ok=True)
 
+# Log the static directory path
+logger.info(f"Static directory path: {static_dir}")
+logger.info(f"Static directory contents: {os.listdir(static_dir)}")
+
 # Mount static files
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/static", StaticFiles(directory=static_dir, html=True), name="static")
 
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc: HTTPException):
-    if request.url.path.startswith("/api/") or request.url.path.startswith("/auth/"):
+    if request.url.path.startswith(("/api/", "/auth/", "/playlist/", "/search/", "/brands/")):
         return JSONResponse(
             status_code=404,
             content={"detail": "Not found"}
         )
-    try:
-        return FileResponse(os.path.join(static_dir, "index.html"))
-    except Exception:
-        # If index.html is not found, try to serve from the root of static directory
-        return FileResponse(os.path.join(static_dir, "../static/index.html"))
+    
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    else:
+        logger.error(f"index.html not found at {index_path}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"index.html not found at {index_path}"}
+        )
 
 @app.get("/")
 async def read_root():
-    try:
-        return FileResponse(os.path.join(static_dir, "index.html"))
-    except Exception:
-        # If index.html is not found, try to serve from the root of static directory
-        return FileResponse(os.path.join(static_dir, "../static/index.html"))
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    else:
+        logger.error(f"index.html not found at {index_path}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"index.html not found at {index_path}"}
+        )
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "static_dir": static_dir, "files": os.listdir(static_dir)}
