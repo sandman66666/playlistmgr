@@ -10,10 +10,8 @@ const CACHE_DURATION = 5 * 60 * 1000;
 // Debounce delay for token validation (1 second)
 const VALIDATION_DELAY = 1000;
 
-// Get the base API URL based on environment
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://playlist-mgr-39a919ee8105-1641bf424db9.herokuapp.com'
-  : 'http://localhost:3001';
+// Get the base API URL from environment variable
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
