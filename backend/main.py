@@ -49,11 +49,19 @@ async def custom_404_handler(request: Request, exc: HTTPException):
             status_code=404,
             content={"detail": "Not found"}
         )
-    return FileResponse(os.path.join(static_dir, "index.html"))
+    try:
+        return FileResponse(os.path.join(static_dir, "index.html"))
+    except Exception:
+        # If index.html is not found, try to serve from the root of static directory
+        return FileResponse(os.path.join(static_dir, "../static/index.html"))
 
 @app.get("/")
 async def read_root():
-    return FileResponse(os.path.join(static_dir, "index.html"))
+    try:
+        return FileResponse(os.path.join(static_dir, "index.html"))
+    except Exception:
+        # If index.html is not found, try to serve from the root of static directory
+        return FileResponse(os.path.join(static_dir, "../static/index.html"))
 
 @app.get("/health")
 async def health_check():
