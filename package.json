@@ -7,7 +7,8 @@
     "npm": "10.x"
   },
   "scripts": {
-    "postinstall": "cd frontend && npm install && npm run build",
+    "heroku-prebuild": "cd frontend && npm install",
+    "heroku-postbuild": "cd frontend && npm run build",
     "start": "cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker",
     "build": "cd frontend && npm run build"
   },
