@@ -8,7 +8,7 @@ import logging
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Set to DEBUG for more verbose output
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(f'spotify_app_{os.getenv("ENVIRONMENT", "development")}.log'),
@@ -37,10 +37,12 @@ app.include_router(brands.router, prefix="/brands", tags=["brands"])
 
 # Get the absolute path to the static directory
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+logger.info(f"Static directory path: {static_dir}")
+
+# Create static directory if it doesn't exist
 os.makedirs(static_dir, exist_ok=True)
 
-# Log static directory information
-logger.info(f"Static directory path: {static_dir}")
+# Log static directory contents
 try:
     logger.info(f"Static directory contents: {os.listdir(static_dir)}")
 except Exception as e:
@@ -62,10 +64,14 @@ async def custom_404_handler(request: Request, exc: HTTPException):
     
     if os.path.exists(index_path):
         logger.info(f"Serving index.html from: {index_path}")
+        try:
+            with open(index_path, 'r') as f:
+                logger.debug(f"index.html contents: {f.read()}")
+        except Exception as e:
+            logger.error(f"Error reading index.html: {e}")
         return FileResponse(index_path)
     else:
         logger.error(f"index.html not found at {index_path}")
-        # List directory contents for debugging
         try:
             logger.error(f"Directory contents: {os.listdir(os.path.dirname(index_path))}")
         except Exception as e:
@@ -83,7 +89,9 @@ async def health_check():
         dir_contents = {
             "static_dir": static_dir,
             "static_files": os.listdir(static_dir),
-            "index_exists": os.path.exists(os.path.join(static_dir, "index.html"))
+            "index_exists": os.path.exists(os.path.join(static_dir, "index.html")),
+            "cwd": os.getcwd(),
+            "abs_static_path": os.path.abspath(static_dir)
         }
     except Exception as e:
         dir_contents = {"error": str(e)}
