@@ -18,11 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Create backend structure first
-RUN mkdir -p /app/backend/static && \
-    chmod -R 755 /app/backend/static
+# Create directory structure
+RUN mkdir -p /app/frontend/build && \
+    mkdir -p /app/backend && \
+    chmod -R 755 /app/frontend/build
 
-# Copy backend files
+# Copy backend files first
 COPY backend/ ./backend/
 
 # Install Python dependencies
@@ -34,32 +35,27 @@ RUN cd frontend && npm install
 
 COPY frontend/ ./frontend/
 
-# Build frontend and copy to static directory
+# Build frontend
 RUN cd frontend && \
     echo "Building frontend..." && \
     npm run build && \
     echo "Frontend build contents:" && \
     ls -la build/ && \
-    echo "Copying frontend build to static directory..." && \
-    cp -rv build/* /app/backend/static/ && \
-    echo "Verifying static directory contents:" && \
-    ls -la /app/backend/static/ && \
-    if [ ! -f "/app/backend/static/index.html" ]; then \
-        echo "ERROR: index.html not found" && \
+    echo "Verifying build files:" && \
+    if [ ! -f "build/index.html" ]; then \
+        echo "ERROR: index.html not found in build directory" && \
         exit 1; \
     fi && \
-    echo "Static directory permissions:" && \
-    ls -la /app/backend/ | grep static && \
     echo "Index.html contents:" && \
-    head -n 5 /app/backend/static/index.html
+    head -n 5 build/index.html
 
 # Final verification
-RUN echo "=== Final directory structure ===" && \
+RUN echo "=== Directory structure ===" && \
     find /app -type f -name "index.html" -ls && \
-    echo "=== Static files ===" && \
-    ls -la /app/backend/static/ && \
-    echo "=== Static directory permissions ===" && \
-    stat /app/backend/static
+    echo "=== Frontend build files ===" && \
+    ls -la /app/frontend/build/ && \
+    echo "=== Build directory permissions ===" && \
+    stat /app/frontend/build
 
 # Expose port
 EXPOSE 8000

@@ -35,21 +35,21 @@ app.include_router(playlist.router, prefix="/playlist", tags=["playlist"])
 app.include_router(search.router, prefix="/search", tags=["search"])
 app.include_router(brands.router, prefix="/brands", tags=["brands"])
 
-# Get the absolute path to the static directory
-static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-logger.info(f"Static directory path: {static_dir}")
+# Get the absolute path to the frontend build directory
+build_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "build")
+logger.info(f"Frontend build directory path: {build_dir}")
 
-# Create static directory if it doesn't exist
-os.makedirs(static_dir, exist_ok=True)
+# Create build directory if it doesn't exist
+os.makedirs(build_dir, exist_ok=True)
 
-# Log static directory contents
+# Log build directory contents
 try:
-    logger.info(f"Static directory contents: {os.listdir(static_dir)}")
+    logger.info(f"Build directory contents: {os.listdir(build_dir)}")
 except Exception as e:
-    logger.error(f"Error listing static directory: {e}")
+    logger.error(f"Error listing build directory: {e}")
 
-# Mount static files at root path
-app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+# Mount frontend build files at root path
+app.mount("/", StaticFiles(directory=build_dir, html=True), name="frontend")
 
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc: HTTPException):
@@ -59,7 +59,7 @@ async def custom_404_handler(request: Request, exc: HTTPException):
             content={"detail": "Not found"}
         )
     
-    index_path = os.path.join(static_dir, "index.html")
+    index_path = os.path.join(build_dir, "index.html")
     logger.debug(f"Attempting to serve index.html from: {index_path}")
     
     if os.path.exists(index_path):
@@ -87,11 +87,11 @@ async def health_check():
     dir_contents = {}
     try:
         dir_contents = {
-            "static_dir": static_dir,
-            "static_files": os.listdir(static_dir),
-            "index_exists": os.path.exists(os.path.join(static_dir, "index.html")),
+            "build_dir": build_dir,
+            "build_files": os.listdir(build_dir),
+            "index_exists": os.path.exists(os.path.join(build_dir, "index.html")),
             "cwd": os.getcwd(),
-            "abs_static_path": os.path.abspath(static_dir)
+            "abs_build_path": os.path.abspath(build_dir)
         }
     except Exception as e:
         dir_contents = {"error": str(e)}
