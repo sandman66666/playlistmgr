@@ -2,8 +2,10 @@ build:
   languages:
     - python
     - nodejs
-  packages:
-    - nodejs
-    - python
+  pre:
+    - cd frontend && npm install
+    - cd frontend && npm run build
+    - mkdir -p backend/static
+    - cp -r frontend/build/* backend/static/
 run:
   web: cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT

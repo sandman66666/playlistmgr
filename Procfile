@@ -1,2 +1,1 @@
-release: cd frontend && npm install && npm run build && cd .. && mkdir -p backend/static && cp -r frontend/build/* backend/static/
-web: cd backend && PYTHONPATH=/app/backend gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+web: cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
