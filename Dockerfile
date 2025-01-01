@@ -1,79 +1,53 @@
-# Build frontend
-FROM node:20 AS frontend-build
+# Use Python image as base
+FROM python:3.11.7-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+ENV NODE_VERSION=20
+
+# Install Node.js and build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    build-essential \
+    && curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
 WORKDIR /app
 
-# Copy package files first
+# Copy frontend files
 COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm install
 
-# Copy all frontend files
 COPY frontend/ ./frontend/
 
-# Build frontend and verify output
-RUN cd frontend && \
-    echo "=== Building frontend ===" && \
-    npm run build && \
-    echo "=== Frontend build structure ===" && \
-    find frontend/build -type f && \
-    echo "=== Frontend build contents ===" && \
-    ls -la frontend/build/ && \
-    echo "=== Verifying index.html ===" && \
-    cat frontend/build/index.html
+# Build frontend
+RUN cd frontend && npm run build && \
+    echo "Frontend build contents:" && \
+    ls -la frontend/build/
 
-# Build backend
-FROM python:3.11.7-slim
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
-
-# Install build dependencies and debugging tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    tree \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Prepare static directory with proper permissions
+# Create and prepare static directory
 RUN mkdir -p /app/backend/static && \
-    chmod -R 755 /app/backend/static
+    cp -rv frontend/build/* /app/backend/static/ && \
+    echo "Static directory contents:" && \
+    ls -la /app/backend/static/
 
-# Debug: Show directory structure before copy
-RUN echo "=== Directory structure before copy ===" && \
-    tree /app
+# Copy backend files
+COPY backend/requirements.txt ./backend/
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy frontend build files to static directory
-COPY --from=frontend-build /app/frontend/build/. /app/backend/static/
+COPY backend/ ./backend/
 
-# Verify frontend files were copied correctly
-RUN echo "=== Verifying static directory after frontend copy ===" && \
+# Verify final structure
+RUN echo "Final static directory contents:" && \
     ls -la /app/backend/static/ && \
-    if [ ! -f "/app/backend/static/index.html" ]; then \
-        echo "ERROR: index.html not found in static directory" && \
-        exit 1; \
-    fi
-
-# Install Python dependencies
-COPY backend/requirements.txt /app/backend/
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
-
-# Copy remaining backend files
-COPY backend/ /app/backend/
-
-# Final verification
-RUN echo "=== Final directory structure ===" && \
-    tree /app && \
-    echo "=== Static directory contents ===" && \
-    ls -la /app/backend/static/ && \
-    echo "=== Verifying index.html content ===" && \
-    if [ -f "/app/backend/static/index.html" ]; then \
-        head -n 10 /app/backend/static/index.html; \
-    else \
-        echo "ERROR: index.html not found in final verification" && \
-        exit 1; \
-    fi
+    echo "Verifying index.html:" && \
+    cat /app/backend/static/index.html
 
 # Expose port
 EXPOSE 8000
 
-# Start the application with debug logging
+# Start the application
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "debug"]

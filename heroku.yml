@@ -1,5 +1,14 @@
+setup:
+  addons:
+    - plan: heroku-postgresql:hobby-dev
+  config:
+    PYTHONPATH: /app
+
 build:
   docker:
     web: Dockerfile
+  config:
+    DOCKER_BUILDKIT: 1
+
 run:
-  web: cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile - --log-level debug --preload
+  web: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --log-level debug
