@@ -1,1 +1,1 @@
-web: cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker
+web: cd frontend && npm install && npm run build && cd ../backend && mkdir -p frontend/build && cp -r ../frontend/build/* frontend/build/ && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker
