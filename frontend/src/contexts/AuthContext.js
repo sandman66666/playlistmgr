@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
       console.error('Token validation error:', e);
       return false;
     }
-  }, []);
+  }, [setToken, setTokenInfo]); // Add dependencies for state setters
 
   // Debounced validate token
   const validateToken = useCallback(
