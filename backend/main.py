@@ -15,7 +15,7 @@ app = FastAPI()
 # Configure CORS
 origins = [
     "http://localhost:3000",
-    "https://playlist-mgr-39a919ee8105.herokuapp.com",
+    "https://playlist-mgr-39a919ee8105-1641bf424db9.herokuapp.com",
 ]
 
 app.add_middleware(
@@ -34,19 +34,21 @@ app.include_router(brands.router, prefix="/api/brands", tags=["brands"])
 
 # Static files handling
 static_dirs = [
-    "static",  # Heroku static files directory
-    "../frontend/build",  # Local development
+    "../frontend/build",  # Local development and Heroku (after build)
+    "static",  # Fallback static directory
 ]
 
 static_dir = None
 for dir_path in static_dirs:
-    if os.path.exists(dir_path):
-        static_dir = dir_path
-        logger.info(f"Static directory found at {os.path.abspath(dir_path)}")
+    abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), dir_path))
+    if os.path.exists(abs_path):
+        static_dir = abs_path
+        logger.info(f"Static directory found at {abs_path}")
         break
 
 if static_dir:
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+    logger.info(f"Mounted static files from {static_dir}")
 else:
     logger.warning("No static directory found in any of the search paths")
 
@@ -70,6 +72,7 @@ async def startup_event():
     logger.info("- /api/search: Search endpoints")
     logger.info("- /api/playlist: Playlist management endpoints")
     logger.info("- /api/brands: Brand profile endpoints")
+    logger.info(f"Static files directory: {static_dir}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
