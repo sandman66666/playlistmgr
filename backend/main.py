@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse
 from api import auth, playlist, search, brands
 
 # Configure logging
@@ -32,46 +32,30 @@ app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(playlist.router, prefix="/api/playlist", tags=["playlist"])
 app.include_router(brands.router, prefix="/api/brands", tags=["brands"])
 
-# Redirect /callback to /auth/callback
-@app.get("/callback")
-async def redirect_callback(code: str = None, state: str = None):
-    """Redirect /callback to /auth/callback"""
-    params = []
-    if code:
-        params.append(f"code={code}")
-    if state:
-        params.append(f"state={state}")
-    query_string = "&".join(params)
-    redirect_url = f"/auth/callback?{query_string}" if params else "/auth/callback"
-    return RedirectResponse(url=redirect_url)
-
 # Static files handling
 current_dir = os.path.dirname(os.path.abspath(__file__))
 static_dir = os.path.join(current_dir, "static")
 
-if os.path.exists(static_dir):
-    logger.info(f"Mounting static files from {static_dir}")
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
-else:
-    logger.warning(f"Static directory not found at {static_dir}")
-    # Fallback to frontend/build for local development
-    frontend_build = os.path.join(current_dir, "..", "frontend", "build")
-    if os.path.exists(frontend_build):
-        logger.info(f"Mounting static files from {frontend_build}")
-        app.mount("/", StaticFiles(directory=frontend_build, html=True), name="static")
-    else:
-        logger.warning("No static directory found in any of the search paths")
+# Ensure static directory exists
+os.makedirs(static_dir, exist_ok=True)
 
+# Mount static files
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# Serve static files from root
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     """Serve SPA for any unmatched routes"""
-    if os.path.exists(static_dir):
-        index_path = os.path.join(static_dir, "index.html")
-    else:
-        index_path = os.path.join(current_dir, "..", "frontend", "build", "index.html")
-        
+    # First check if the path exists in static directory
+    static_file = os.path.join(static_dir, full_path)
+    if os.path.exists(static_file) and os.path.isfile(static_file):
+        return FileResponse(static_file)
+    
+    # If not found or is a directory, serve index.html
+    index_path = os.path.join(static_dir, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
+        
     raise HTTPException(status_code=404, detail="Not found")
 
 @app.on_event("startup")
