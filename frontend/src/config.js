@@ -1,5 +1,9 @@
+const isProd = process.env.NODE_ENV === 'production';
+const prodDomain = 'https://playlist-mgr-39a919ee8105.herokuapp.com';
+const devDomain = 'http://localhost:3001';
+
 const config = {
-  apiBaseUrl: 'http://localhost:3001',
+  apiBaseUrl: isProd ? prodDomain : devDomain,
   endpoints: {
     auth: {
       login: '/auth/login',
