@@ -33,17 +33,30 @@ app.include_router(playlist.router, prefix="/api/playlist", tags=["playlist"])
 app.include_router(brands.router, prefix="/api/brands", tags=["brands"])
 
 # Static files handling
-static_dir = "../build"  # Look for build directory in root
-if os.path.exists(static_dir):
-    logger.info(f"Static directory found at {os.path.abspath(static_dir)}")
+static_dirs = [
+    "../build",  # Local development
+    "/app/build",  # Heroku
+]
+
+static_dir = None
+for dir_path in static_dirs:
+    if os.path.exists(dir_path):
+        static_dir = dir_path
+        logger.info(f"Static directory found at {os.path.abspath(dir_path)}")
+        break
+
+if static_dir:
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 else:
-    logger.warning(f"Static directory not found: {os.path.abspath(static_dir)}")
+    logger.warning("No static directory found in any of the search paths")
 
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     """Serve SPA for any unmatched routes"""
-    static_file = f"{static_dir}/index.html"
+    if not static_dir:
+        raise HTTPException(status_code=404, detail="Static files directory not found")
+        
+    static_file = os.path.join(static_dir, "index.html")
     if os.path.exists(static_file):
         return FileResponse(static_file)
     raise HTTPException(status_code=404, detail="Not found")
