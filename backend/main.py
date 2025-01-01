@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from api import auth, playlist, search, brands
 
 # Configure logging
@@ -31,6 +31,19 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(playlist.router, prefix="/api/playlist", tags=["playlist"])
 app.include_router(brands.router, prefix="/api/brands", tags=["brands"])
+
+# Redirect /callback to /auth/callback
+@app.get("/callback")
+async def redirect_callback(code: str = None, state: str = None):
+    """Redirect /callback to /auth/callback"""
+    params = []
+    if code:
+        params.append(f"code={code}")
+    if state:
+        params.append(f"state={state}")
+    query_string = "&".join(params)
+    redirect_url = f"/auth/callback?{query_string}" if params else "/auth/callback"
+    return RedirectResponse(url=redirect_url)
 
 # Static files handling
 static_dirs = [
