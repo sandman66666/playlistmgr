@@ -46,34 +46,32 @@ async def redirect_callback(code: str = None, state: str = None):
     return RedirectResponse(url=redirect_url)
 
 # Static files handling
-static_dirs = [
-    "../frontend/build",  # Local development and Heroku (after build)
-    "static",  # Fallback static directory
-]
+current_dir = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(current_dir, "static")
 
-static_dir = None
-for dir_path in static_dirs:
-    abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), dir_path))
-    if os.path.exists(abs_path):
-        static_dir = abs_path
-        logger.info(f"Static directory found at {abs_path}")
-        break
-
-if static_dir:
+if os.path.exists(static_dir):
+    logger.info(f"Mounting static files from {static_dir}")
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
-    logger.info(f"Mounted static files from {static_dir}")
 else:
-    logger.warning("No static directory found in any of the search paths")
+    logger.warning(f"Static directory not found at {static_dir}")
+    # Fallback to frontend/build for local development
+    frontend_build = os.path.join(current_dir, "..", "frontend", "build")
+    if os.path.exists(frontend_build):
+        logger.info(f"Mounting static files from {frontend_build}")
+        app.mount("/", StaticFiles(directory=frontend_build, html=True), name="static")
+    else:
+        logger.warning("No static directory found in any of the search paths")
 
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     """Serve SPA for any unmatched routes"""
-    if not static_dir:
-        raise HTTPException(status_code=404, detail="Static files directory not found")
+    if os.path.exists(static_dir):
+        index_path = os.path.join(static_dir, "index.html")
+    else:
+        index_path = os.path.join(current_dir, "..", "frontend", "build", "index.html")
         
-    static_file = os.path.join(static_dir, "index.html")
-    if os.path.exists(static_file):
-        return FileResponse(static_file)
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
     raise HTTPException(status_code=404, detail="Not found")
 
 @app.on_event("startup")
