@@ -1,36 +1,36 @@
-# Use Node.js LTS for frontend build
+# Build frontend
 FROM node:20 AS frontend-build
-
 WORKDIR /app
 COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm install
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run build
 
-# Use Python for backend
+# Build backend
 FROM python:3.11.7-slim
-
-# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/backend
 
-# Install system dependencies
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Create necessary directories
 WORKDIR /app
+RUN mkdir -p backend/static
 
-# Copy backend requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy backend files
+COPY backend/requirements.txt backend/
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy backend code
-COPY backend/ ./backend/
+COPY backend/ backend/
 
-# Create static directory and copy frontend build
-RUN mkdir -p /app/backend/static
-COPY --from=frontend-build /app/frontend/build/. /app/backend/static/
+# Copy frontend build to backend static directory
+COPY --from=frontend-build /app/frontend/build/. backend/static/
 
-# Set the default command
-CMD cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile - --log-level debug --preload
+# Expose port
+EXPOSE 8000
+
+# Start the application
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
