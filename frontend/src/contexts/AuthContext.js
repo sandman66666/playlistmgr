@@ -38,7 +38,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Token validation function
-  const validateTokenFn = async (tokenToValidate, tokenInfoToValidate) => {
+  const validateTokenFn = useCallback(async (tokenToValidate, tokenInfoToValidate) => {
     try {
       const now = Date.now();
       // Skip validation if within cache duration
@@ -69,12 +69,12 @@ export function AuthProvider({ children }) {
       console.error('Token validation error:', e);
       return false;
     }
-  };
+  }, []);
 
   // Debounced validate token
   const validateToken = useCallback(
     debounce(validateTokenFn, VALIDATION_DELAY),
-    []
+    [validateTokenFn]
   );
 
   const refreshToken = useCallback(async () => {
