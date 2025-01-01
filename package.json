@@ -7,10 +7,12 @@
     "npm": "10.x"
   },
   "scripts": {
-    "heroku-prebuild": "cd frontend && npm install",
-    "heroku-postbuild": "cd frontend && npm run build && mkdir -p ../backend/static && cp -r build/* ../backend/static/",
-    "start": "cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker",
-    "build": "cd frontend && npm run build"
+    "heroku-prebuild": "cd frontend && npm install && echo '=== Frontend dependencies installed ==='",
+    "heroku-postbuild": "./verify_build.sh || (echo '=== Build verification failed ===' && exit 1)",
+    "start": "cd backend && echo '=== Starting backend server ===' && STATIC_DIR=/app/backend/static PYTHONPATH=$PYTHONPATH:. gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120",
+    "build": "cd frontend && npm run build",
+    "verify": "./verify_build.sh",
+    "debug": "echo '=== Debug Information ===' && ls -la && ls -la frontend/build && ls -la backend/static"
   },
   "cacheDirectories": [
     "frontend/node_modules"
