@@ -28,11 +28,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ ./backend/
 
-# Create static directory
+# Create static directory and copy frontend build
 RUN mkdir -p /app/backend/static
-
-# Copy built frontend from previous stage
-COPY --from=frontend-build /app/frontend/build/* /app/backend/static/
+COPY --from=frontend-build /app/frontend/build/. /app/backend/static/
 
 # Set the default command
 CMD cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile - --log-level debug --preload
