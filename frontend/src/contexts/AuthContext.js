@@ -10,6 +10,11 @@ const CACHE_DURATION = 5 * 60 * 1000;
 // Debounce delay for token validation (1 second)
 const VALIDATION_DELAY = 1000;
 
+// Get the base API URL based on environment
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://playlist-mgr-39a919ee8105-1641bf424db9.herokuapp.com'
+  : 'http://localhost:3001';
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [tokenInfo, setTokenInfo] = useState(null);
@@ -43,7 +48,7 @@ export function AuthProvider({ children }) {
         return true;
       }
 
-      const response = await fetch('http://localhost:3001/auth/validate', {
+      const response = await fetch(`${API_BASE_URL}/auth/validate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +86,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/auth/refresh', {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +110,7 @@ export function AuthProvider({ children }) {
       console.error('Token refresh error:', e);
       return false;
     }
-  }, [token, tokenInfo?.refresh_token]); // Only depend on refresh_token
+  }, [token, tokenInfo?.refresh_token]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('spotify_token');
@@ -139,7 +144,7 @@ export function AuthProvider({ children }) {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('http://localhost:3001/auth/login');
+      const response = await fetch(`${API_BASE_URL}/auth/login`);
       const data = await response.json();
       window.location.href = data.auth_url;
     } catch (e) {
