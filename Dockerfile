@@ -1,16 +1,24 @@
 # Build frontend
 FROM node:20 AS frontend-build
 WORKDIR /app
+
+# Copy package files first
 COPY frontend/package*.json ./frontend/
 RUN cd frontend && npm install
-COPY frontend/ ./frontend/
-RUN cd frontend && npm run build
 
-# Debug frontend build
-RUN echo "=== Frontend build contents ===" && \
-    ls -la /app/frontend/build/ && \
+# Copy all frontend files
+COPY frontend/ ./frontend/
+
+# Build frontend and verify output
+RUN cd frontend && \
+    echo "=== Building frontend ===" && \
+    npm run build && \
     echo "=== Frontend build structure ===" && \
-    find /app/frontend/build -type f
+    find frontend/build -type f && \
+    echo "=== Frontend build contents ===" && \
+    ls -la frontend/build/ && \
+    echo "=== Verifying index.html ===" && \
+    cat frontend/build/index.html
 
 # Build backend
 FROM python:3.11.7-slim
@@ -23,34 +31,45 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tree \
     && rm -rf /var/lib/apt/lists/*
 
-# Create necessary directories
 WORKDIR /app
-RUN mkdir -p /app/backend/static
 
-# Copy backend files
-COPY backend/requirements.txt backend/
-RUN pip install --no-cache-dir -r backend/requirements.txt
-
-COPY backend/ backend/
+# Prepare static directory with proper permissions
+RUN mkdir -p /app/backend/static && \
+    chmod -R 755 /app/backend/static
 
 # Debug: Show directory structure before copy
-RUN echo "=== Directory structure before frontend copy ===" && \
+RUN echo "=== Directory structure before copy ===" && \
     tree /app
 
-# Copy frontend build to backend static directory with verbose output
-RUN echo "=== Copying frontend build to static directory ==="
+# Copy frontend build files to static directory
 COPY --from=frontend-build /app/frontend/build/. /app/backend/static/
 
-# Debug: Verify static files
-RUN echo "=== Final static directory contents ===" && \
+# Verify frontend files were copied correctly
+RUN echo "=== Verifying static directory after frontend copy ===" && \
     ls -la /app/backend/static/ && \
-    echo "=== Full directory structure ===" && \
+    if [ ! -f "/app/backend/static/index.html" ]; then \
+        echo "ERROR: index.html not found in static directory" && \
+        exit 1; \
+    fi
+
+# Install Python dependencies
+COPY backend/requirements.txt /app/backend/
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+
+# Copy remaining backend files
+COPY backend/ /app/backend/
+
+# Final verification
+RUN echo "=== Final directory structure ===" && \
     tree /app && \
-    echo "=== Verifying index.html ===" && \
+    echo "=== Static directory contents ===" && \
+    ls -la /app/backend/static/ && \
+    echo "=== Verifying index.html content ===" && \
     if [ -f "/app/backend/static/index.html" ]; then \
-        echo "index.html exists" && cat /app/backend/static/index.html; \
+        head -n 10 /app/backend/static/index.html; \
     else \
-        echo "index.html not found"; \
+        echo "ERROR: index.html not found in final verification" && \
+        exit 1; \
     fi
 
 # Expose port
