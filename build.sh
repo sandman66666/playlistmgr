@@ -3,17 +3,29 @@
 # Exit on error
 set -e
 
+echo "Starting build process..."
+
+# Install frontend dependencies
 echo "Installing frontend dependencies..."
 cd frontend
 npm install
 
+# Build frontend
 echo "Building frontend..."
 npm run build
 
-echo "Moving back to root directory..."
+# Create static directory if it doesn't exist
+echo "Setting up static directory..."
 cd ..
+mkdir -p backend/static
 
+# Copy frontend build to backend static directory
+echo "Copying frontend build to backend static..."
+cp -r frontend/build/* backend/static/
+
+# Install backend dependencies
 echo "Installing backend dependencies..."
-pip install -r requirements.txt
+cd backend
+pip install -r ../requirements.txt
 
-echo "Build completed successfully!"
+echo "Build process completed successfully!"

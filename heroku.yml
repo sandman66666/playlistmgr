@@ -1,11 +1,5 @@
 build:
-  languages:
-    - python
-    - nodejs
-  pre:
-    - cd frontend && npm install
-    - cd frontend && npm run build
-    - mkdir -p backend/static
-    - cp -r frontend/build/* backend/static/
+  docker:
+    web: Dockerfile
 run:
-  web: cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+  web: cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - --error-logfile - --log-level debug --preload
