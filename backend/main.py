@@ -8,7 +8,7 @@ import logging
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Set to DEBUG for more verbose output
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(f'spotify_app_{os.getenv("ENVIRONMENT", "development")}.log'),
@@ -39,12 +39,15 @@ app.include_router(brands.router, prefix="/brands", tags=["brands"])
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(static_dir, exist_ok=True)
 
-# Log the static directory path
+# Log static directory information
 logger.info(f"Static directory path: {static_dir}")
-logger.info(f"Static directory contents: {os.listdir(static_dir)}")
+try:
+    logger.info(f"Static directory contents: {os.listdir(static_dir)}")
+except Exception as e:
+    logger.error(f"Error listing static directory: {e}")
 
-# Mount static files
-app.mount("/static", StaticFiles(directory=static_dir, html=True), name="static")
+# Mount static files at root path
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc: HTTPException):
@@ -55,22 +58,18 @@ async def custom_404_handler(request: Request, exc: HTTPException):
         )
     
     index_path = os.path.join(static_dir, "index.html")
+    logger.debug(f"Attempting to serve index.html from: {index_path}")
+    
     if os.path.exists(index_path):
+        logger.info(f"Serving index.html from: {index_path}")
         return FileResponse(index_path)
     else:
         logger.error(f"index.html not found at {index_path}")
-        return JSONResponse(
-            status_code=500,
-            content={"detail": f"index.html not found at {index_path}"}
-        )
-
-@app.get("/")
-async def read_root():
-    index_path = os.path.join(static_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    else:
-        logger.error(f"index.html not found at {index_path}")
+        # List directory contents for debugging
+        try:
+            logger.error(f"Directory contents: {os.listdir(os.path.dirname(index_path))}")
+        except Exception as e:
+            logger.error(f"Error listing directory: {e}")
         return JSONResponse(
             status_code=500,
             content={"detail": f"index.html not found at {index_path}"}
@@ -78,4 +77,18 @@ async def read_root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "static_dir": static_dir, "files": os.listdir(static_dir)}
+    # Add directory structure to health check
+    dir_contents = {}
+    try:
+        dir_contents = {
+            "static_dir": static_dir,
+            "static_files": os.listdir(static_dir),
+            "index_exists": os.path.exists(os.path.join(static_dir, "index.html"))
+        }
+    except Exception as e:
+        dir_contents = {"error": str(e)}
+    
+    return {
+        "status": "healthy",
+        "directory_info": dir_contents
+    }
