@@ -34,8 +34,8 @@ app.include_router(brands.router, prefix="/api/brands", tags=["brands"])
 
 # Static files handling
 static_dirs = [
-    "../build",  # Local development
-    "/app/build",  # Heroku
+    "static",  # Heroku static files directory
+    "../frontend/build",  # Local development
 ]
 
 static_dir = None
