@@ -1,0 +1,29 @@
+{
+  "name": "spotify-playlist-manager",
+  "version": "1.0.0",
+  "description": "Spotify Playlist Manager with brand-based playlist creation",
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
+  "scripts": {
+    "postinstall": "cd frontend && npm install && npm run build",
+    "start": "cd backend && gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker",
+    "build": "cd frontend && npm run build"
+  },
+  "cacheDirectories": [
+    "frontend/node_modules"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sandman66666/playlistmgr.git"
+  },
+  "keywords": [
+    "spotify",
+    "playlist",
+    "fastapi",
+    "react"
+  ],
+  "author": "Session42",
+  "license": "MIT"
+}
