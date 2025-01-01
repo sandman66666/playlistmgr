@@ -3,12 +3,14 @@ setup:
     - plan: heroku-postgresql:hobby-dev
   config:
     PYTHONPATH: /app
+    DEBUG: 1
 
 build:
   docker:
     web: Dockerfile
   config:
     DOCKER_BUILDKIT: 1
+    DOCKER_VOLUME_STATIC: /app/backend/static
 
 run:
-  web: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --log-level debug
+  web: python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT --log-level debug
