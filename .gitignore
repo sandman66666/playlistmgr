@@ -1,14 +1,29 @@
-# Dependencies
+# dependencies
 node_modules/
-__pycache__/
-*.py[cod]
-*$py.class
-.env
+/.pnp
+.pnp.js
 
-# Build files
+# testing
+/coverage
+
+# production
 /build
 /dist
-*.egg-info/
+
+# misc
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.cache
+__pycache__/
+*.pyc
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # IDE
 .idea/
@@ -17,28 +32,5 @@ __pycache__/
 *.swo
 
 # Logs
+logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Runtime data
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Cache
-.cache
-.pytest_cache/
-.coverage
-coverage/
-
-# Virtual Environment
-venv/
-env/
-ENV/
-
-# Spotify specific
-.cache-*
