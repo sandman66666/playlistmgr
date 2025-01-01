@@ -2,15 +2,13 @@ import React, { useState, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+// Get the base API URL from environment variable
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
 function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { token } = useAuth();
-
-  // If already logged in, redirect to dashboard
-  if (token) {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   const initiateLogin = useCallback(async () => {
     if (loading) return;
@@ -20,7 +18,7 @@ function Login() {
       setLoading(true);
 
       // Get login URL from backend
-      const response = await fetch('http://localhost:3001/auth/login');
+      const response = await fetch(`${API_BASE_URL}/auth/login`);
       if (!response.ok) {
         throw new Error('Failed to get login URL');
       }
@@ -46,6 +44,11 @@ function Login() {
       setLoading(false);
     }
   }, [loading]);
+
+  // If already logged in, redirect to dashboard
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   if (loading && !error) {
     return (
