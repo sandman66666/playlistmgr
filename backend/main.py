@@ -8,9 +8,6 @@ import os
 import shutil
 from pathlib import Path
 
-# Import routers
-from api import auth, playlist, search, brands
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -57,11 +54,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(playlist.router, prefix="/playlist", tags=["playlist"])
-app.include_router(search.router, prefix="/search", tags=["search"])
-app.include_router(brands.router, prefix="/brands", tags=["brands"])
+# Import and include routers with error handling
+try:
+    from api import auth, playlist, search, brands
+    
+    # Include routers with basic error handling
+    for router_info in [
+        (auth.router, "/auth", "auth"),
+        (playlist.router, "/playlist", "playlist"),
+        (search.router, "/search", "search"),
+        (brands.router, "/brands", "brands")
+    ]:
+        try:
+            router, prefix, tag = router_info
+            app.include_router(router, prefix=prefix, tags=[tag])
+            logger.info(f"Successfully mounted {tag} router at {prefix}")
+        except Exception as e:
+            logger.warning(f"Failed to mount {tag} router: {str(e)}")
+            
+except ImportError as e:
+    logger.warning(f"Some API modules could not be imported: {str(e)}")
+    logger.info("Continuing with limited functionality")
 
 # Function to check if path is an API route
 def is_api_route(path: str) -> bool:
