@@ -5,7 +5,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import logging
 import os
+import shutil
 from pathlib import Path
+
+# Import routers
+from api import auth, playlist, search, brands
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +27,19 @@ logger.info(f"Static directory path: {STATIC_DIR}")
 # Ensure static directory exists
 static_path = Path(STATIC_DIR)
 static_path.mkdir(parents=True, exist_ok=True)
+
+# Copy frontend build files to static directory if they exist
+frontend_build = BASE_DIR.parent / "frontend" / "build"
+if frontend_build.exists():
+    logger.info(f"Copying frontend build files from {frontend_build} to {static_path}")
+    for item in frontend_build.glob('*'):
+        if item.is_file():
+            shutil.copy2(str(item), str(static_path))
+        elif item.is_dir():
+            dest_dir = static_path / item.name
+            if dest_dir.exists():
+                shutil.rmtree(str(dest_dir))
+            shutil.copytree(str(item), str(dest_dir))
 
 # Configure CORS
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://playlist-mgr-39a919ee8105.herokuapp.com")
@@ -72,9 +89,8 @@ async def health_check():
         "environment": os.getenv("ENVIRONMENT", "production")
     }
 
-# Mount static files for development
-if os.getenv("ENVIRONMENT") == "development":
-    app.mount("/static", StaticFiles(directory=str(static_path), html=True), name="static")
+# Serve static files
+app.mount("/static", StaticFiles(directory=str(static_path), html=True), name="static")
 
 # Catch-all route for SPA
 @app.get("/{full_path:path}")
@@ -90,5 +106,5 @@ async def serve_spa(full_path: str, request: Request):
         
     return FileResponse(str(index_path))
 
-# Finally, mount the static directory
-app.mount("/", StaticFiles(directory=str(static_path), html=True), name="static")
+# Mount the root path to serve static files
+app.mount("/", StaticFiles(directory=str(static_path), html=True), name="root")
