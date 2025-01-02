@@ -26,8 +26,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "cross-env GENERATE_SOURCEMAP=false REACT_APP_API_URL=https://playlist-mgr-39a919ee8105-1641bf424db9.herokuapp.com react-scripts build",
-    "build:local": "cross-env GENERATE_SOURCEMAP=false REACT_APP_API_URL=http://localhost:3001 react-scripts build",
+    "build": "GENERATE_SOURCEMAP=false PUBLIC_URL=/ react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
