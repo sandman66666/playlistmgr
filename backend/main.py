@@ -7,6 +7,16 @@ import logging
 import os
 from pathlib import Path
 
+# Find the STATIC_DIR definition and update it
+STATIC_DIR = os.getenv('STATIC_DIR', str(Path(__file__).parent / "static"))
+logger.info(f"Static directory path: {STATIC_DIR}")
+
+# Create directory if it doesn't exist
+Path(STATIC_DIR).mkdir(parents=True, exist_ok=True)
+
+# Mount static files at root path - this should be the LAST route registration
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
