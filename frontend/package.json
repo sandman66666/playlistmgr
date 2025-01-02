@@ -3,32 +3,36 @@
   "version": "1.0.0",
   "private": true,
   "homepage": ".",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "cross-env GENERATE_SOURCEMAP=false PUBLIC_URL=/ react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "start": "TAILWIND_CONFIG_FILE=./config/tailwind.config.js POSTCSS_CONFIG_FILE=./config/postcss.config.js react-scripts start",
+    "build": "cross-env TAILWIND_CONFIG_FILE=./config/tailwind.config.js POSTCSS_CONFIG_FILE=./config/postcss.config.js GENERATE_SOURCEMAP=false PUBLIC_URL=/ react-scripts build"
+      
+  },
   "dependencies": {
+    "@tailwindcss/forms": "^0.5.9",
+    "@tailwindcss/typography": "^0.5.10",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.7.9",
+    "cross-env": "^7.0.3",
+    "glob": "^10.4.5",
+    "lodash": "^4.17.21",
+    "postcss": "^8.4.32",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.1.1",
     "react-scripts": "5.0.1",
     "tailwindcss": "^3.4.0",
-    "@tailwindcss/typography": "^0.5.10",
-    "@tailwindcss/forms": "^0.5.9",
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "web-vitals": "^3.5.0",
-    "lodash": "^4.17.21",
-    "cross-env": "^7.0.3",
-    "axios": "^1.7.9"
+    "web-vitals": "^3.5.0"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "GENERATE_SOURCEMAP=false PUBLIC_URL=/ react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
