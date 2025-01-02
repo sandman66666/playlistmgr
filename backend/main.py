@@ -15,10 +15,18 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Get the absolute path to the static directory
-STATIC_DIR = os.getenv('STATIC_DIR', str(Path(__file__).parent / "static"))
-
+# Create FastAPI app
 app = FastAPI()
+
+# Get the absolute path to the static directory
+BASE_DIR = Path(__file__).parent
+STATIC_DIR = os.getenv('STATIC_DIR', str(BASE_DIR / "static"))
+logger.info(f"Base directory: {BASE_DIR}")
+logger.info(f"Static directory path: {STATIC_DIR}")
+
+# Ensure static directory exists
+static_path = Path(STATIC_DIR)
+static_path.mkdir(parents=True, exist_ok=True)
 
 # Configure CORS - restrict in production
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://playlist-mgr-39a919ee8105.herokuapp.com")
@@ -42,19 +50,14 @@ app.include_router(playlist.router, prefix="/playlist", tags=["playlist"])
 app.include_router(search.router, prefix="/search", tags=["search"])
 app.include_router(brands.router, prefix="/brands", tags=["brands"])
 
-# Ensure static directory exists
-Path(STATIC_DIR).mkdir(parents=True, exist_ok=True)
-logger.info(f"Static directory path: {STATIC_DIR}")
-
 # Function to check if path is an API route
 def is_api_route(path: str) -> bool:
-    api_prefixes = ("/api/", "/auth/", "/playlist/", "/search/", "/brands/", "/health")
+    api_prefixes = ("/api/", "/auth/", "/playlist/", "/search/", "/brands/", "/health", "/debug-static")
     return path.startswith(api_prefixes)
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint with detailed status"""
-    static_path = Path(STATIC_DIR)
     static_exists = static_path.exists()
     static_files = [f.name for f in static_path.iterdir()] if static_exists else []
     index_exists = (static_path / "index.html").exists()
@@ -68,22 +71,29 @@ async def health_check():
         "environment": os.getenv("ENVIRONMENT", "production")
     }
 
-# Handle static files - the order of these routes is important
+@app.get("/debug-static")
+async def debug_static():
+    """Debug endpoint to check static files"""
+    return {
+        "static_dir_exists": static_path.exists(),
+        "static_dir_path": str(static_path),
+        "static_dir_contents": [str(f.relative_to(static_path)) for f in static_path.rglob('*') if f.is_file()],
+        "index_exists": (static_path / "index.html").exists()
+    }
+
+# Catch-all route for SPA
 @app.get("/{full_path:path}")
-async def serve_static(full_path: str, request: Request):
-    """Serve static files and handle SPA routes"""
+async def serve_spa(full_path: str, request: Request):
+    """Serve the SPA for all other routes"""
     if is_api_route(request.url.path):
         raise HTTPException(status_code=404, detail="API route not found")
-
-    index_path = Path(STATIC_DIR) / "index.html"
-    logger.debug(f"Serving path: {full_path}")
-    logger.debug(f"Index path: {index_path}")
-    
+        
+    index_path = static_path / "index.html"
     if index_path.exists():
+        logger.debug(f"Serving index.html for path: {full_path}")
         return FileResponse(str(index_path))
-    
     logger.error(f"index.html not found at {index_path}")
-    raise HTTPException(status_code=500, detail="Static files not found")
+    raise HTTPException(status_code=500, detail="Frontend assets not found")
 
-# Mount static files after all routes are defined
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+# Mount static files last
+app.mount("/", StaticFiles(directory=str(static_path), html=True), name="static")
