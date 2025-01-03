@@ -23,7 +23,18 @@ mkdir -p backend/static
 echo "Copying frontend build to backend static..."
 if [ -d "frontend/build" ]; then
     echo "Copying build files..."
+    # First, clean the static directory
+    rm -rf backend/static/*
+    
+    # Copy all files from build directory
     cp -r frontend/build/* backend/static/
+    
+    # If there's a nested static directory, move its contents up
+    if [ -d "backend/static/static" ]; then
+        mv backend/static/static/* backend/static/
+        rm -rf backend/static/static
+    fi
+    
     echo "Verifying static directory contents..."
     ls -la backend/static/
 else

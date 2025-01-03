@@ -124,6 +124,9 @@ def is_api_route(path: str) -> bool:
     api_prefixes = ("/auth/", "/playlist/", "/search/", "/brands/", "/health", "/debug-static")
     return path.startswith(api_prefixes)
 
+# Mount static files first
+app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
 # Catch-all route for SPA - this should be after API routes but before static files
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str, request: Request):
@@ -138,6 +141,3 @@ async def serve_spa(full_path: str, request: Request):
         raise HTTPException(status_code=500, detail="Frontend assets not found")
         
     return FileResponse(str(index_path))
-
-# Serve static files from the root directory - this should be last
-app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
