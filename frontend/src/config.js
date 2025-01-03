@@ -4,7 +4,8 @@ const devDomain = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const config = {
   apiBaseUrl: isProd ? prodDomain : devDomain,
-  spotifyCallbackUrl: isProd ? `${prodDomain}/auth/callback` : `${devDomain}/auth/callback`,
+  // Updated to use hash-based routing
+  spotifyCallbackUrl: isProd ? `${prodDomain}/#/auth` : `${devDomain}/#/auth`,
   endpoints: {
     auth: {
       login: '/auth/login',
