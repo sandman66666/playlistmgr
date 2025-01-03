@@ -133,15 +133,20 @@ async def callback(code: str, state: Optional[str] = None, request: Request = No
             'expires_at': token_info['expires_at']
         }
         
+        # Get frontend URL from environment
+        frontend_url = os.getenv('FRONTEND_URL', '').rstrip('/')
+        
         # Redirect to frontend with token info as query parameters
-        redirect_url = f"/#/auth?{urlencode(query_params)}"
+        redirect_url = f"{frontend_url}/#/auth?{urlencode(query_params)}"
         logger.info(f"Redirecting to: {redirect_url}")
         return RedirectResponse(url=redirect_url)
         
     except Exception as e:
         logger.error(f"Error in callback: {str(e)}")
+        # Get frontend URL from environment for error redirect
+        frontend_url = os.getenv('FRONTEND_URL', '').rstrip('/')
         # Redirect to frontend with error
-        error_redirect = f"/#/auth?error={str(e)}"
+        error_redirect = f"{frontend_url}/#/auth?error={str(e)}"
         return RedirectResponse(url=error_redirect)
 
 @router.post("/validate")
