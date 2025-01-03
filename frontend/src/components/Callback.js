@@ -13,11 +13,20 @@ function Callback() {
     const processCallback = async () => {
       try {
         console.log('Processing callback with location:', location);
+        console.log('Raw hash:', location.hash);
         
-        // With HashRouter, we get the full hash including the path
-        // Example: #/auth?access_token=...
-        // Remove the '#/auth?' prefix
-        const params = new URLSearchParams(location.hash.replace('#/auth?', ''));
+        // Handle both hash formats:
+        // 1. '#access_token=...' (direct from Spotify)
+        // 2. '#/auth?access_token=...' (from our router)
+        let paramString = location.hash;
+        if (paramString.startsWith('#/auth?')) {
+          paramString = paramString.replace('#/auth?', '');
+        } else if (paramString.startsWith('#')) {
+          paramString = paramString.substring(1);
+        }
+        
+        console.log('Processed param string:', paramString);
+        const params = new URLSearchParams(paramString);
         
         // Check for error
         const error = params.get('error');
@@ -35,7 +44,8 @@ function Callback() {
           hasAccessToken: !!access_token,
           hasRefreshToken: !!refresh_token,
           expiresIn: expires_in,
-          expiresAt: expires_at
+          expiresAt: expires_at,
+          rawParams: Object.fromEntries(params.entries())
         });
 
         if (!access_token || !refresh_token) {
@@ -61,7 +71,13 @@ function Callback() {
       }
     };
 
-    processCallback();
+    if (location.hash) {
+      processCallback();
+    } else {
+      console.log('No hash parameters found in URL');
+      setError('No authentication data received');
+      setIsProcessing(false);
+    }
   }, [location.hash, setTokenInfo]);
 
   if (!isProcessing && error) {
