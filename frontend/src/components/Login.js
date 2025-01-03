@@ -41,8 +41,8 @@ function Login() {
         localStorage.setItem('spotify_auth_state', state);
       }
 
-      // Redirect to Spotify's authorization page
-      window.location.replace(data.auth_url);
+      // Directly redirect to Spotify's authorization page
+      window.location.href = data.auth_url;
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message);
