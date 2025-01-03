@@ -16,7 +16,7 @@ function Login() {
       setLoading(true);
 
       // Get login URL from backend
-      const response = await fetch(`${config.apiBaseUrl}${config.endpoints.auth.login}`, {
+      const response = await fetch(`${config.apiBaseUrl}/auth/login`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -41,8 +41,8 @@ function Login() {
         localStorage.setItem('spotify_auth_state', state);
       }
 
-      // Directly redirect to Spotify's authorization page
-      window.location.href = data.auth_url;
+      // Directly navigate to Spotify's authorization URL
+      window.location.assign(data.auth_url);
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message);
