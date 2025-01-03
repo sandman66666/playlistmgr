@@ -12,12 +12,15 @@ function Callback() {
   useEffect(() => {
     const processCallback = async () => {
       try {
-        console.log('Processing callback with search:', location.search);
+        console.log('Processing callback with location:', location);
         
-        // Get token info from search params
-        const params = new URLSearchParams(location.search);
+        // With HashRouter, we get the full hash including the path
+        // Example: #/auth?access_token=...
+        // Remove the '#/auth?' prefix
+        const params = new URLSearchParams(location.hash.replace('#/auth?', ''));
+        
+        // Check for error
         const error = params.get('error');
-        
         if (error) {
           throw new Error(error);
         }
@@ -59,7 +62,7 @@ function Callback() {
     };
 
     processCallback();
-  }, [location.search, setTokenInfo]);
+  }, [location.hash, setTokenInfo]);
 
   if (!isProcessing && error) {
     return (
