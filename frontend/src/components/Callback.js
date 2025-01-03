@@ -12,6 +12,8 @@ function Callback() {
   useEffect(() => {
     const processCallback = async () => {
       try {
+        console.log('Processing callback with hash:', location.hash);
+        
         // Check for error in search params first
         const searchParams = new URLSearchParams(location.search);
         const searchError = searchParams.get('error');
@@ -21,7 +23,9 @@ function Callback() {
 
         // Get token info from hash fragment
         // Remove '#/auth?' prefix to get just the params
-        const hashString = location.hash.replace(/^#\/auth\?/, '');
+        const hashString = location.hash.substring(2); // Remove '/#' prefix
+        console.log('Parsed hash string:', hashString);
+        
         const hashParams = new URLSearchParams(hashString);
         const error = hashParams.get('error');
         
@@ -34,6 +38,13 @@ function Callback() {
         const refresh_token = hashParams.get('refresh_token');
         const expires_in = hashParams.get('expires_in');
         const expires_at = hashParams.get('expires_at');
+
+        console.log('Extracted tokens:', { 
+          hasAccessToken: !!access_token,
+          hasRefreshToken: !!refresh_token,
+          expiresIn: expires_in,
+          expiresAt: expires_at
+        });
 
         if (!access_token || !refresh_token) {
           throw new Error('Missing token information');
