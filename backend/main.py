@@ -121,18 +121,27 @@ async def spotify_callback(code: str, state: str = None):
 
 # Function to check if path is an API route
 def is_api_route(path: str) -> bool:
-    api_prefixes = ("/auth/", "/playlist/", "/search/", "/brands/", "/health", "/debug-static")
-    return path.startswith(api_prefixes)
+    """Check if the path is an API route"""
+    # Add exact matches for API endpoints
+    api_endpoints = {
+        "/auth/login", "/auth/callback", "/auth/refresh", "/auth/validate",
+        "/playlist/user", "/search", "/brands", "/health", "/callback"
+    }
+    # Add prefixes for dynamic routes
+    api_prefixes = ("/auth/", "/playlist/", "/search/", "/brands/")
+    
+    return path in api_endpoints or any(path.startswith(prefix) for prefix in api_prefixes)
 
-# Mount static files first
+# Mount static files after API routes
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
-# Catch-all route for SPA - this should be after API routes but before static files
+# Catch-all route for SPA - this should be the last route
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str, request: Request):
     """Serve the SPA for all non-API routes"""
     # If it's an API route that wasn't matched, it doesn't exist
     if is_api_route(request.url.path):
+        logger.error(f"API route not found: {request.url.path}")
         raise HTTPException(status_code=404, detail="API route not found")
         
     index_path = static_path / "index.html"
