@@ -51,7 +51,7 @@ app.add_middleware(
 
 # Import and include routers with error handling
 try:
-    from api import auth, playlist, search, brands
+    from backend.api import auth, playlist, search, brands
     
     # Include routers with basic error handling
     for router_info in [
@@ -66,7 +66,7 @@ try:
             logger.info(f"Successfully mounted {tag} router at {prefix}")
         except Exception as e:
             logger.error(f"Failed to mount {tag} router: {str(e)}")
-            raise  # Re-raise the exception to prevent silent failures
+            raise  # Re-raise the exception as this is a critical error
             
 except ImportError as e:
     logger.error(f"Critical error: API modules could not be imported: {str(e)}")
@@ -97,7 +97,6 @@ async def health_check():
 @app.get("/callback")
 async def spotify_callback(code: str, state: str = None):
     """Redirect Spotify callback to auth router"""
-    logger.info(f"Received Spotify callback with code: {code[:10]}... and state: {state}")
     return RedirectResponse(url=f"/auth/callback?code={code}&state={state}")
 
 # Function to check if path is an API route
