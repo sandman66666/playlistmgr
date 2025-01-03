@@ -1,120 +1,82 @@
 # Spotify Playlist Manager
 
-A web application for managing Spotify playlists, built with React and FastAPI.
+A web application for managing Spotify playlists with advanced features and a modern user interface.
 
 ## Features
 
-- Search for songs on Spotify
-- View your playlists
-- Add songs to playlists
-- OAuth2 authentication with Spotify
+- Spotify Authentication
+- Playlist Management
+- Brand-based Playlist Creation
+- Modern UI with React
+- FastAPI Backend
 
-## Setup
-
-### Backend
-
-1. Install Python dependencies:
-```bash
-cd backend
-pip install -r requirements.txt
-```
-
-2. Create a `.env` file in the backend directory:
-```
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-SPOTIFY_REDIRECT_URI=http://localhost:3000/callback
-```
-
-3. Run the backend server:
-```bash
-uvicorn main:app --reload --port 3001
-```
+## Tech Stack
 
 ### Frontend
+- React
+- React Router
+- Tailwind CSS
+- Modern JavaScript (ES6+)
 
-1. Install Node.js dependencies:
-```bash
-cd frontend
-npm install
-```
-
-2. Run the frontend development server:
-```bash
-npm start
-```
-
-## Environment Setup
-
-1. Create a Spotify Developer account and register your application
-2. Add `http://localhost:3000/callback` to your Spotify App's Redirect URIs
-3. Copy your Client ID and Client Secret to the backend `.env` file
+### Backend
+- FastAPI
+- Python 3.11
+- Spotify Web API
+- PostgreSQL
 
 ## Development
 
-- Backend API runs on `http://localhost:3001`
-- Frontend development server runs on `http://localhost:3000`
+### Prerequisites
+- Node.js (v20+)
+- Python 3.11+
+- Spotify Developer Account
 
-## Deployment
+### Setup
 
-### GitHub Setup
-
-1. If you haven't already, clone the repository:
+1. Clone the repository:
 ```bash
 git clone https://github.com/sandman66666/playlistmgr.git
 cd playlistmgr
 ```
 
-2. After making changes, commit them:
+2. Install frontend dependencies:
 ```bash
-git add .
-git commit -m "Your commit message"
+cd frontend
+npm install
 ```
 
-3. Push to GitHub:
+3. Install backend dependencies:
 ```bash
-git push origin main
+cd backend
+pip install -r requirements.txt
 ```
 
-### Heroku Configuration
-
-1. Make the setup script executable:
-```bash
-chmod +x setup.sh
+4. Set up environment variables:
+Create a `.env` file in the backend directory with your Spotify API credentials:
+```
+SPOTIFY_CLIENT_ID=your_client_id
+SPOTIFY_CLIENT_SECRET=your_client_secret
+SPOTIFY_REDIRECT_URI=your_redirect_uri
 ```
 
-2. Run the setup script to configure buildpacks and environment variables:
+### Running the Application
+
+1. Start the backend server:
 ```bash
-./setup.sh
+cd backend
+uvicorn main:app --reload
 ```
 
-3. Update your Spotify App's settings:
-   - Add `https://playlist-mgr-39a919ee8105.herokuapp.com/callback` to your Spotify App's Redirect URIs
-   - Update the SPOTIFY_REDIRECT_URI in your Heroku config:
-     ```bash
-     heroku config:set SPOTIFY_REDIRECT_URI=https://playlist-mgr-39a919ee8105.herokuapp.com/callback
-     ```
-
-4. Heroku will automatically deploy when changes are pushed to the GitHub repository (github.com/sandman66666/playlistmgr)
-
-### Troubleshooting Deployment
-
-If you encounter issues:
-1. Check the Heroku logs:
+2. Start the frontend development server:
 ```bash
-heroku logs --tail
+cd frontend
+npm run dev
 ```
 
-2. Ensure buildpacks are correctly set:
-```bash
-heroku buildpacks
-```
+## Deployment
 
-3. Verify environment variables:
-```bash
-heroku config
-```
+The application is deployed on Heroku with automatic deployments from the main branch.
 
-## Contributing
+## License
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+This project is licensed under the MIT License - see the LICENSE file for details.
