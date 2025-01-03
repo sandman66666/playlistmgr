@@ -14,11 +14,10 @@ function Callback() {
       try {
         console.log('Processing callback with search:', location.search);
         
-        // With HashRouter, the parameters will be in location.search
+        // Get token info from search params
         const params = new URLSearchParams(location.search);
-        
-        // Check for error
         const error = params.get('error');
+        
         if (error) {
           throw new Error(error);
         }
