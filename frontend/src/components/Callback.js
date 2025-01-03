@@ -12,18 +12,26 @@ function Callback() {
   useEffect(() => {
     const processCallback = async () => {
       try {
-        const params = new URLSearchParams(location.search);
-        const error = params.get('error');
+        // Check for error in search params first
+        const searchParams = new URLSearchParams(location.search);
+        const searchError = searchParams.get('error');
+        if (searchError) {
+          throw new Error(searchError);
+        }
+
+        // Get token info from hash fragment
+        const hashParams = new URLSearchParams(location.hash.replace('#', ''));
+        const error = hashParams.get('error');
         
         if (error) {
           throw new Error(error);
         }
 
-        // Get token info directly from URL params
-        const access_token = params.get('access_token');
-        const refresh_token = params.get('refresh_token');
-        const expires_in = params.get('expires_in');
-        const expires_at = params.get('expires_at');
+        // Get token info from hash params
+        const access_token = hashParams.get('access_token');
+        const refresh_token = hashParams.get('refresh_token');
+        const expires_in = hashParams.get('expires_in');
+        const expires_at = hashParams.get('expires_at');
 
         if (!access_token || !refresh_token) {
           throw new Error('Missing token information');
@@ -49,7 +57,7 @@ function Callback() {
     };
 
     processCallback();
-  }, [location.search, setTokenInfo]);
+  }, [location.search, location.hash, setTokenInfo]);
 
   if (!isProcessing && error) {
     return (
