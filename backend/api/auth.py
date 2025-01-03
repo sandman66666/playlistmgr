@@ -125,16 +125,6 @@ async def callback(code: str, state: Optional[str] = None, request: Request = No
         
         logger.info("Successfully obtained and validated token with all required scopes")
         
-        # Get the frontend URL from environment variable or use the current domain
-        frontend_url = os.getenv('FRONTEND_URL')
-        if not frontend_url and request:
-            # Extract domain from request
-            parsed_url = urlparse(str(request.base_url))
-            frontend_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-        
-        if not frontend_url:
-            frontend_url = "https://playlist-mgr-39a919ee8105.herokuapp.com"
-        
         # Create query parameters with token info
         query_params = {
             'access_token': token_info['access_token'],
@@ -144,15 +134,14 @@ async def callback(code: str, state: Optional[str] = None, request: Request = No
         }
         
         # Redirect to frontend with token info as query parameters
-        redirect_url = f"{frontend_url}/#/auth?{urlencode(query_params)}"
+        redirect_url = f"/#/auth?{urlencode(query_params)}"
         logger.info(f"Redirecting to: {redirect_url}")
         return RedirectResponse(url=redirect_url)
         
     except Exception as e:
         logger.error(f"Error in callback: {str(e)}")
         # Redirect to frontend with error
-        frontend_url = "https://playlist-mgr-39a919ee8105.herokuapp.com"
-        error_redirect = f"{frontend_url}/#/auth?error={str(e)}"
+        error_redirect = f"/#/auth?error={str(e)}"
         return RedirectResponse(url=error_redirect)
 
 @router.post("/validate")
