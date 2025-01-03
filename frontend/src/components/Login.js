@@ -18,7 +18,14 @@ function Login() {
       setLoading(true);
 
       // Get login URL from backend
-      const response = await fetch(`${API_BASE_URL}/auth/login`);
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+      
       if (!response.ok) {
         throw new Error('Failed to get login URL');
       }
@@ -36,8 +43,8 @@ function Login() {
         localStorage.setItem('spotify_auth_state', state);
       }
 
-      // Redirect to Spotify login
-      window.location.href = data.auth_url;
+      // Redirect to Spotify's authorization page
+      window.location.replace(data.auth_url);
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message);

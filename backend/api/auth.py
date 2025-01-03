@@ -8,6 +8,7 @@ import os
 import secrets
 from typing import Optional
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -46,10 +47,13 @@ def get_auth_manager():
     ]
     
     try:
+        redirect_uri = os.getenv('SPOTIFY_REDIRECT_URI')
+        logger.info(f"Using redirect URI: {redirect_uri}")
+        
         auth_manager = SpotifyOAuth(
             client_id=os.getenv('SPOTIFY_CLIENT_ID'),
             client_secret=os.getenv('SPOTIFY_CLIENT_SECRET'),
-            redirect_uri=os.getenv('SPOTIFY_REDIRECT_URI'),
+            redirect_uri=redirect_uri,
             scope=' '.join(scopes),
             open_browser=False,
             cache_handler=None  # Disable cache to prevent token persistence
@@ -89,9 +93,13 @@ async def login():
     try:
         auth_manager = get_auth_manager()
         state = generate_state()
+        
+        # Get the authorization URL
         auth_url = auth_manager.get_authorize_url(state=state)
         logger.info("Generated auth URL for login with comprehensive scopes")
-        return {"auth_url": auth_url, "state": state}
+        
+        # Return the URL directly
+        return {"auth_url": auth_url}
     except Exception as e:
         logger.error(f"Error generating login URL: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to generate login URL")

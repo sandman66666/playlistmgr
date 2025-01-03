@@ -2,11 +2,15 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 import logging
 import os
 import shutil
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,20 +34,32 @@ frontend_build = BASE_DIR.parent / "frontend" / "build"
 if frontend_build.exists():
     logger.info(f"Copying frontend build files from {frontend_build} to {static_path}")
     for item in frontend_build.glob('*'):
+        dest_dir = static_path / item.name
         if item.is_file():
             shutil.copy2(str(item), str(static_path))
         elif item.is_dir():
-            dest_dir = static_path / item.name
             if dest_dir.exists():
-                shutil.rmtree(str(dest_dir))
-            shutil.copytree(str(item), str(dest_dir))
+                try:
+                    shutil.rmtree(str(dest_dir))
+                except FileNotFoundError:
+                    logger.warning(f"Directory not found while trying to remove: {dest_dir}")
+                except Exception as e:
+                    logger.error(f"Error removing directory {dest_dir}: {str(e)}")
+            try:
+                shutil.copytree(str(item), str(dest_dir))
+            except Exception as e:
+                logger.error(f"Error copying directory {item} to {dest_dir}: {str(e)}")
 
 # Configure CORS
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://playlist-mgr-39a919ee8105.herokuapp.com")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 CORS_ORIGINS = [
     FRONTEND_URL,
     "http://localhost:3000",
-    "http://localhost:3001"
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://playlist-mgr-39a919ee8105.herokuapp.com",
+    "https://playlist-mgr-39a919ee8105-1641bf424db9.herokuapp.com"
 ]
 
 app.add_middleware(
@@ -60,10 +76,10 @@ try:
     
     # Include routers with basic error handling
     for router_info in [
-        (auth.router, "/auth", "auth"),
-        (playlist.router, "/playlist", "playlist"),
-        (search.router, "/search", "search"),
-        (brands.router, "/brands", "brands")
+        (auth, "/auth", "auth"),
+        (playlist, "/playlist", "playlist"),
+        (search, "/search", "search"),
+        (brands, "/brands", "brands")
     ]:
         try:
             router, prefix, tag = router_info
@@ -99,13 +115,19 @@ async def health_check():
         "static_exists": static_exists,
         "static_files": static_files,
         "index_exists": index_exists,
-        "environment": os.getenv("ENVIRONMENT", "production")
+        "environment": os.getenv("ENVIRONMENT", "development")
     }
 
-# Serve static files
-app.mount("/static", StaticFiles(directory=str(static_path), html=True), name="static")
+# Handle Spotify callback at root level
+@app.get("/callback")
+async def spotify_callback(code: str, state: str = None):
+    """Redirect Spotify callback to auth router"""
+    return RedirectResponse(url=f"/auth/callback?code={code}&state={state}")
 
-# Catch-all route for SPA
+# Serve static files from the root directory
+app.mount("/", StaticFiles(directory=str(static_path), html=True), name="root")
+
+# Catch-all route for SPA - this should be the last route
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str, request: Request):
     """Serve the SPA for all other routes"""
@@ -118,6 +140,3 @@ async def serve_spa(full_path: str, request: Request):
         raise HTTPException(status_code=500, detail="Frontend assets not found")
         
     return FileResponse(str(index_path))
-
-# Mount the root path to serve static files
-app.mount("/", StaticFiles(directory=str(static_path), html=True), name="root")

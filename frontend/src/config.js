@@ -1,9 +1,10 @@
 const isProd = process.env.NODE_ENV === 'production';
-const prodDomain = 'https://playlist-mgr-39a919ee8105.herokuapp.com';
-const devDomain = 'http://localhost:3001';
+const prodDomain = 'https://playlist-mgr-39a919ee8105-1641bf424db9.herokuapp.com';
+const devDomain = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const config = {
   apiBaseUrl: isProd ? prodDomain : devDomain,
+  spotifyCallbackUrl: isProd ? `${prodDomain}/auth/callback` : `${devDomain}/auth/callback`,
   endpoints: {
     auth: {
       login: '/auth/login',
@@ -12,17 +13,17 @@ const config = {
       validate: '/auth/validate'
     },
     playlist: {
-      user: '/api/playlist/user',
-      details: (id) => `/api/playlist/${id}`,
-      tracks: (id) => `/api/playlist/${id}/tracks`,
-      addTracks: (id) => `/api/playlist/${id}/tracks`,
-      removeTracks: (id) => `/api/playlist/${id}/tracks`
+      user: '/playlist/user',
+      details: (id) => `/playlist/${id}`,
+      tracks: (id) => `/playlist/${id}/tracks`,
+      addTracks: (id) => `/playlist/${id}/tracks`,
+      removeTracks: (id) => `/playlist/${id}/tracks`
     },
     brands: {
-      list: '/api/brands',
-      details: (id) => `/api/brands/${id}`,
-      suggestMusic: '/api/brands/suggest-music',
-      createPlaylist: '/api/brands/create-playlist'
+      list: '/brands',
+      details: (id) => `/brands/${id}`,
+      suggestMusic: '/brands/suggest-music',
+      createPlaylist: '/brands/create-playlist'
     }
   }
 };
