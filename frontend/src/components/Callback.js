@@ -20,7 +20,9 @@ function Callback() {
         }
 
         // Get token info from hash fragment
-        const hashParams = new URLSearchParams(location.hash.replace('#', ''));
+        // Remove '#/auth?' prefix to get just the params
+        const hashString = location.hash.replace(/^#\/auth\?/, '');
+        const hashParams = new URLSearchParams(hashString);
         const error = hashParams.get('error');
         
         if (error) {
