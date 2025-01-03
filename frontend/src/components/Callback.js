@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import config from '../config';
 
 function Callback() {
   const location = useLocation();
@@ -10,51 +9,47 @@ function Callback() {
   const [isProcessing, setIsProcessing] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const processCallback = useCallback(async () => {
-    try {
-      const params = new URLSearchParams(location.search);
-      const code = params.get('code');
-      const state = params.get('state');
-      
-      // Validate state to prevent CSRF
-      const savedState = localStorage.getItem('spotify_auth_state');
-      if (state !== savedState) {
-        throw new Error('State mismatch');
-      }
-      
-      // Clear state from storage
-      localStorage.removeItem('spotify_auth_state');
-      
-      if (!code) {
-        throw new Error('No code provided');
-      }
-
-      // Exchange code for token
-      const response = await fetch(`${config.apiBaseUrl}${config.endpoints.auth.callback}?code=${code}&state=${state}`);
-      if (!response.ok) {
-        throw new Error('Failed to exchange code for token');
-      }
-
-      const data = await response.json();
-      if (!data.token_info || !data.token_info.access_token) {
-        throw new Error('Invalid token response');
-      }
-
-      // Store token info
-      localStorage.setItem('spotify_token', JSON.stringify(data.token_info));
-      setTokenInfo(data.token_info);
-      setIsAuthenticated(true);
-    } catch (error) {
-      console.error('Error in callback:', error);
-      setError(error.message);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [location.search, setTokenInfo]);
-
   useEffect(() => {
+    const processCallback = async () => {
+      try {
+        const params = new URLSearchParams(location.search);
+        const error = params.get('error');
+        
+        if (error) {
+          throw new Error(error);
+        }
+
+        // Get token info directly from URL params
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        const expires_in = params.get('expires_in');
+        const expires_at = params.get('expires_at');
+
+        if (!access_token || !refresh_token) {
+          throw new Error('Missing token information');
+        }
+
+        const tokenInfo = {
+          access_token,
+          refresh_token,
+          expires_in: parseInt(expires_in, 10),
+          expires_at: parseInt(expires_at, 10)
+        };
+
+        // Store token info
+        localStorage.setItem('spotify_token', JSON.stringify(tokenInfo));
+        setTokenInfo(tokenInfo);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Error in callback:', error);
+        setError(error.message);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
     processCallback();
-  }, [processCallback]);
+  }, [location.search, setTokenInfo]);
 
   if (!isProcessing && error) {
     return (

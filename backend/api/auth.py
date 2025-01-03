@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Header, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from spotipy.oauth2 import SpotifyOAuth
 import spotipy
 import logging
@@ -105,7 +105,7 @@ async def login():
         raise HTTPException(status_code=500, detail="Failed to generate login URL")
 
 @router.get("/callback")
-async def callback(code: str, state: Optional[str] = None):
+async def callback(code: str, state: Optional[str] = None, request: Request = None):
     """Handle OAuth callback from Spotify"""
     try:
         if not state or not validate_state(state):
@@ -124,10 +124,28 @@ async def callback(code: str, state: Optional[str] = None):
             raise ValueError("Invalid token received from Spotify")
         
         logger.info("Successfully obtained and validated token with all required scopes")
-        return {"token_info": token_info}
+        
+        # Get the base URL from the request
+        base_url = str(request.base_url).rstrip('/')
+        
+        # Create query parameters with token info
+        query_params = {
+            'access_token': token_info['access_token'],
+            'refresh_token': token_info['refresh_token'],
+            'expires_in': token_info['expires_in'],
+            'expires_at': token_info['expires_at']
+        }
+        
+        # Redirect to frontend with token info as query parameters
+        redirect_url = f"{base_url}/#/auth?{urlencode(query_params)}"
+        return RedirectResponse(url=redirect_url)
+        
     except Exception as e:
         logger.error(f"Error in callback: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Authentication failed: {str(e)}")
+        # Redirect to frontend with error
+        base_url = str(request.base_url).rstrip('/') if request else '/'
+        error_redirect = f"{base_url}/#/auth?error={str(e)}"
+        return RedirectResponse(url=error_redirect)
 
 @router.post("/validate")
 async def validate_token(request: Request):
