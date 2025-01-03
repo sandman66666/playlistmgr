@@ -29,27 +29,6 @@ logger.info(f"Static directory path: {STATIC_DIR}")
 static_path = Path(STATIC_DIR)
 static_path.mkdir(parents=True, exist_ok=True)
 
-# Copy frontend build files to static directory if they exist
-frontend_build = BASE_DIR.parent / "frontend" / "build"
-if frontend_build.exists():
-    logger.info(f"Copying frontend build files from {frontend_build} to {static_path}")
-    for item in frontend_build.glob('*'):
-        dest_dir = static_path / item.name
-        if item.is_file():
-            shutil.copy2(str(item), str(static_path))
-        elif item.is_dir():
-            if dest_dir.exists():
-                try:
-                    shutil.rmtree(str(dest_dir))
-                except FileNotFoundError:
-                    logger.warning(f"Directory not found while trying to remove: {dest_dir}")
-                except Exception as e:
-                    logger.error(f"Error removing directory {dest_dir}: {str(e)}")
-            try:
-                shutil.copytree(str(item), str(dest_dir))
-            except Exception as e:
-                logger.error(f"Error copying directory {item} to {dest_dir}: {str(e)}")
-
 # Configure CORS
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 CORS_ORIGINS = [
@@ -86,11 +65,12 @@ try:
             app.include_router(router, prefix=prefix, tags=[tag])
             logger.info(f"Successfully mounted {tag} router at {prefix}")
         except Exception as e:
-            logger.warning(f"Failed to mount {tag} router: {str(e)}")
+            logger.error(f"Failed to mount {tag} router: {str(e)}")
+            raise  # Re-raise the exception to prevent silent failures
             
 except ImportError as e:
-    logger.warning(f"Some API modules could not be imported: {str(e)}")
-    logger.info("Continuing with limited functionality")
+    logger.error(f"Critical error: API modules could not be imported: {str(e)}")
+    raise  # Re-raise the exception as this is a critical error
 
 @app.get("/health")
 async def health_check():
@@ -117,6 +97,7 @@ async def health_check():
 @app.get("/callback")
 async def spotify_callback(code: str, state: str = None):
     """Redirect Spotify callback to auth router"""
+    logger.info(f"Received Spotify callback with code: {code[:10]}... and state: {state}")
     return RedirectResponse(url=f"/auth/callback?code={code}&state={state}")
 
 # Function to check if path is an API route
@@ -127,10 +108,34 @@ def is_api_route(path: str) -> bool:
         "/auth/login", "/auth/callback", "/auth/refresh", "/auth/validate",
         "/playlist/user", "/search", "/brands", "/health", "/callback"
     }
+    
     # Add prefixes for dynamic routes
     api_prefixes = ("/auth/", "/playlist/", "/search/", "/brands/")
     
-    return path in api_endpoints or any(path.startswith(prefix) for prefix in api_prefixes)
+    is_api = path in api_endpoints or any(path.startswith(prefix) for prefix in api_prefixes)
+    logger.debug(f"Path {path} is_api_route: {is_api}")
+    return is_api
+
+# Copy frontend build files to static directory if they exist
+frontend_build = BASE_DIR.parent / "frontend" / "build"
+if frontend_build.exists():
+    logger.info(f"Copying frontend build files from {frontend_build} to {static_path}")
+    for item in frontend_build.glob('*'):
+        dest_dir = static_path / item.name
+        if item.is_file():
+            shutil.copy2(str(item), str(static_path))
+        elif item.is_dir():
+            if dest_dir.exists():
+                try:
+                    shutil.rmtree(str(dest_dir))
+                except FileNotFoundError:
+                    logger.warning(f"Directory not found while trying to remove: {dest_dir}")
+                except Exception as e:
+                    logger.error(f"Error removing directory {dest_dir}: {str(e)}")
+            try:
+                shutil.copytree(str(item), str(dest_dir))
+            except Exception as e:
+                logger.error(f"Error copying directory {item} to {dest_dir}: {str(e)}")
 
 # Mount static files after API routes
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
@@ -139,6 +144,8 @@ app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str, request: Request):
     """Serve the SPA for all non-API routes"""
+    logger.debug(f"Received request for path: {request.url.path}")
+    
     # If it's an API route that wasn't matched, it doesn't exist
     if is_api_route(request.url.path):
         logger.error(f"API route not found: {request.url.path}")
