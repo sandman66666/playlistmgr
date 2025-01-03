@@ -1,0 +1,769 @@
+auth.py 
+
+from fastapi import APIRouter, HTTPException
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
+from fastapi.responses import JSONResponse
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+router = APIRouter()
+
+# Debug prints for environment variables
+print("Environment variables loaded:")
+print(f"Client ID: {'*' * len(os.getenv('SPOTIFY_CLIENT_ID', ''))}") # Masked for security
+print(f"Client Secret: {'*' * len(os.getenv('SPOTIFY_CLIENT_SECRET', ''))}")  # Masked for security
+print(f"Redirect URI: {os.getenv('SPOTIFY_REDIRECT_URI', 'Not set')}")
+
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:3000/callback")
+
+if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI]):
+    print("WARNING: Missing required Spotify credentials!")
+
+def get_auth_manager():
+    return SpotifyOAuth(
+        client_id=SPOTIFY_CLIENT_ID,
+        client_secret=SPOTIFY_CLIENT_SECRET,
+        redirect_uri=SPOTIFY_REDIRECT_URI,
+        scope="playlist-modify-public playlist-modify-private user-read-private"
+    )
+
+@router.get("/login")
+async def login():
+    try:
+        print("Login endpoint called")
+        auth_manager = get_auth_manager()
+        auth_url = auth_manager.get_authorize_url()
+        print(f"Generated auth URL: {auth_url}")
+        
+        return JSONResponse(
+            content={"auth_url": auth_url},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            }
+        )
+    except Exception as e:
+        print(f"Error in login route: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/callback")
+async def callback(code: str):
+    try:
+        print(f"Callback received with code: {code[:10]}...")  # Print first 10 chars of code
+        auth_manager = get_auth_manager()
+        token_info = auth_manager.get_access_token(code)
+        print("Token successfully obtained")
+        
+        # Return token info with CORS headers
+        return JSONResponse(
+            content=token_info,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            }
+        )
+    except Exception as e:
+        print(f"Error in callback route: {str(e)}")
+        error_msg = str(e)
+        print(f"Full error details: {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
+
+        main.py
+
+        from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from api import auth, search, playlist
+
+app = FastAPI(title="Spotify Playlist Manager")
+
+# Enable CORS with more specific configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
+)
+
+# Include routers
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(search.router, prefix="/search", tags=["search"])
+app.include_router(playlist.router, prefix="/playlist", tags=["playlist"])
+
+@app.get("/")
+async def root():
+    return {"message": "Spotify Playlist Manager API"}
+
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    """Handle CORS preflight requests"""
+    return {}
+
+    dashboard.js 
+
+    import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+function Dashboard() {
+  const { token, loading: authLoading, checkAuth, handleLogout } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [userPlaylists, setUserPlaylists] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchUserPlaylists = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      setError('');
+      const response = await fetch('https://api.spotify.com/v1/me/playlists', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch playlists');
+      }
+
+      const data = await response.json();
+      setUserPlaylists(data.items || []);
+    } catch (error) {
+      console.error('Error fetching playlists:', error);
+      setError('Failed to load playlists');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    const init = async () => {
+      const isAuthenticated = await checkAuth();
+      if (isAuthenticated) {
+        fetchUserPlaylists();
+      }
+    };
+
+    init();
+  }, [checkAuth, fetchUserPlaylists]);
+
+  const handleSearch = useCallback(async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || !token) return;
+
+    try {
+      setLoading(true);
+      setError('');
+      const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+
+      const data = await response.json();
+      setSearchResults(data.tracks?.items || []);
+    } catch (error) {
+      console.error('Search error:', error);
+      setError('Search failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, token]);
+
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <p className="mb-4">Please log in to continue</p>
+          <Link to="/login" className="text-green-500 hover:text-green-600">
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Spotify Playlist Manager</h1>
+        <div className="space-x-4">
+          <Link
+            to="/brands"
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            Brand Playlists
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
+      {/* Search Section */}
+      <div className="mb-8">
+        <form onSubmit={handleSearch} className="flex gap-4">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search for tracks..."
+            className="flex-1 p-2 border border-gray-300 rounded"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+          >
+            {loading ? 'Searching...' : 'Search'}
+          </button>
+        </form>
+      </div>
+
+      {/* Search Results */}
+      {searchResults.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">Search Results</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {searchResults.map(track => (
+              <div key={track.id} className="p-4 bg-white rounded-lg shadow">
+                <div className="font-medium">{track.name}</div>
+                <div className="text-sm text-gray-600">{track.artists.map(a => a.name).join(', ')}</div>
+                <div className="text-sm text-gray-500">{track.album.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* User's Playlists */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Your Playlists</h2>
+        {loading ? (
+          <div className="text-center py-4">Loading playlists...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userPlaylists.map(playlist => (
+              <div key={playlist.id} className="p-4 bg-white rounded-lg shadow">
+                <div className="font-medium">{playlist.name}</div>
+                <div className="text-sm text-gray-600">{playlist.tracks.total} tracks</div>
+                {playlist.description && (
+                  <div className="text-sm text-gray-500 mt-2">{playlist.description}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Dashboard;
+
+login.js
+
+import React, { useState, useEffect } from 'react';
+
+function Login() {
+  const [debugLog, setDebugLog] = useState(() => {
+    // Initialize from localStorage if exists
+    const saved = localStorage.getItem('spotify_debug_log');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    // Check URL parameters on component mount
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const error = urlParams.get('error');
+    
+    if (code) {
+      addDebugMessage(`Received code parameter: ${code.substring(0, 10)}...`);
+    }
+    if (error) {
+      addDebugMessage(`Received error: ${error}`);
+    }
+  }, []);
+
+  const addDebugMessage = (message) => {
+    const newLog = [...debugLog, `${new Date().toISOString()}: ${message}`];
+    setDebugLog(newLog);
+    localStorage.setItem('spotify_debug_log', JSON.stringify(newLog));
+  };
+
+  const clearDebugLog = () => {
+    setDebugLog([]);
+    localStorage.removeItem('spotify_debug_log');
+  };
+
+  const handleLogin = async () => {
+    try {
+      addDebugMessage('Starting login process...');
+      
+      const response = await fetch('http://localhost:3001/auth/login');
+      addDebugMessage(`Response status: ${response.status}`);
+      
+      const data = await response.json();
+      addDebugMessage(`Received data: ${JSON.stringify(data)}`);
+      
+      if (data.auth_url) {
+        addDebugMessage(`Redirecting to: ${data.auth_url}`);
+        window.location.href = data.auth_url;
+      } else {
+        addDebugMessage('No auth_url in response');
+      }
+    } catch (error) {
+      addDebugMessage(`Error: ${error.message}`);
+      console.error('Login error:', error);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
+        <h1 className="text-2xl font-bold text-center mb-6">Spotify Playlist Manager</h1>
+        
+        <button
+          onClick={handleLogin}
+          className="w-full px-6 py-3 text-white bg-green-500 rounded-lg hover:bg-green-600 transition-colors"
+        >
+          Login with Spotify
+        </button>
+
+        {/* Debug Controls */}
+        <div className="mt-4 flex justify-between">
+          <button
+            onClick={clearDebugLog}
+            className="text-sm text-red-500 hover:text-red-600"
+          >
+            Clear Debug Log
+          </button>
+          <span className="text-sm text-gray-500">
+            {debugLog.length} log entries
+          </span>
+        </div>
+
+        {/* Debug Log Display */}
+        <div className="mt-4">
+          <h2 className="text-lg font-semibold mb-2">Debug Log:</h2>
+          <div className="bg-gray-100 p-4 rounded-lg max-h-60 overflow-auto">
+            {debugLog.map((log, index) => (
+              <div key={index} className="text-sm font-mono mb-1 break-all whitespace-pre-wrap">
+                {log}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Login;
+
+brandplaylist.js 
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+function BrandPlaylist() {
+  const navigate = useNavigate();
+  const { token, loading: authLoading, checkAuth } = useAuth();
+  const [brands, setBrands] = useState([]);
+  const [selectedBrand, setSelectedBrand] = useState(null);
+  const [brandProfile, setBrandProfile] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchBrands = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      setError('');
+      const response = await fetch('http://localhost:3001/brands');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch brands: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setBrands(data.brands || []);
+    } catch (error) {
+      console.error('Error fetching brands:', error);
+      setError('Failed to load brands. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    const init = async () => {
+      const isAuthenticated = await checkAuth();
+      if (isAuthenticated) {
+        fetchBrands();
+      }
+    };
+
+    init();
+  }, [checkAuth, fetchBrands]);
+
+  const handleBrandSelect = async (brandId) => {
+    if (!brandId || !token) return;
+    
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await fetch(`http://localhost:3001/brands/${brandId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch brand profile: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setBrandProfile(data);
+      setSelectedBrand(brandId);
+      
+      // Get music suggestions from Anthropic
+      const suggestionsResponse = await fetch('http://localhost:3001/brands/suggest-music', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!suggestionsResponse.ok) {
+        throw new Error(`Failed to get music suggestions: ${suggestionsResponse.statusText}`);
+      }
+      
+      const suggestionsData = await suggestionsResponse.json();
+      setSuggestions(suggestionsData.suggestions || []);
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Failed to load brand profile or get music suggestions. Please try again later.');
+      setBrandProfile(null);
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createPlaylist = async () => {
+    if (!token) {
+      setError('Please log in to create a playlist');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await fetch('http://localhost:3001/brands/create-playlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          brand_id: selectedBrand,
+          suggestions: suggestions
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create playlist: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      alert(`Playlist created successfully! You can find it at: ${data.playlist_url}`);
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Failed to create playlist. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Please Log In</h2>
+          <Link to="/login" className="text-green-500 hover:text-green-600">
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Brand-Based Playlist Creator</h2>
+        <Link
+          to="/dashboard"
+          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+        >
+          Back to Dashboard
+        </Link>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
+      {/* Brand Selection */}
+      <div className="mb-8">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Select a Brand
+        </label>
+        <select
+          className="w-full p-2 border border-gray-300 rounded-md"
+          onChange={(e) => handleBrandSelect(e.target.value)}
+          value={selectedBrand || ''}
+          disabled={loading}
+        >
+          <option value="">Choose a brand...</option>
+          {brands.map((brand) => (
+            <option key={brand.id} value={brand.id}>
+              {brand.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {loading && (
+        <div className="flex justify-center items-center py-8">
+          <div className="text-xl">Loading...</div>
+        </div>
+      )}
+
+      {/* Brand Profile Display */}
+      {brandProfile && !loading && (
+        <div className="mb-8 p-4 bg-white rounded-lg shadow">
+          <h3 className="text-xl font-semibold mb-4">{brandProfile.brand}</h3>
+          <div className="prose">
+            <h4 className="font-medium">Brand Essence</h4>
+            <p>{brandProfile.brand_essence?.core_identity}</p>
+            
+            <h4 className="font-medium mt-4">Aesthetic Pillars</h4>
+            <ul className="list-disc pl-5">
+              {brandProfile.aesthetic_pillars?.visual_language?.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+
+            <h4 className="font-medium mt-4">Cultural Values</h4>
+            <ul className="list-disc pl-5">
+              {brandProfile.cultural_positioning?.core_values?.map((value, index) => (
+                <li key={index}>{value}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Music Suggestions */}
+      {suggestions.length > 0 && !loading && (
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">Suggested Tracks</h3>
+          <div className="space-y-4">
+            {suggestions.map((suggestion, index) => (
+              <div key={index} className="p-4 bg-white rounded-lg shadow">
+                <p className="font-medium">{suggestion.track}</p>
+                <p className="text-sm text-gray-600">{suggestion.artist}</p>
+                <p className="text-sm text-gray-500 mt-2">{suggestion.reason}</p>
+              </div>
+            ))}
+          </div>
+          
+          <button
+            onClick={createPlaylist}
+            disabled={loading}
+            className="mt-4 px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400"
+          >
+            {loading ? 'Creating...' : 'Create Playlist'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default BrandPlaylist;
+
+App.js
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import BrandPlaylist from './components/BrandPlaylist';
+import { AuthProvider } from './contexts/AuthContext';
+
+function PrivateRoute({ children }) {
+  const token = localStorage.getItem('spotify_access_token');
+  return token ? children : <Navigate to="/login" />;
+}
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/brands"
+            element={
+              <PrivateRoute>
+                <BrandPlaylist />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;
+
+index.js 
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import App from './App';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('App Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
+            <p className="text-gray-600 mb-4">
+              The application encountered an error. Please try refreshing the page.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+            >
+              Refresh Page
+            </button>
+            {process.env.NODE_ENV === 'development' && (
+              <pre className="mt-4 p-4 bg-gray-100 rounded overflow-auto text-sm">
+                {this.state.error?.toString()}
+              </pre>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </React.StrictMode>
+);
+
+index.html
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Spotify Playlist Manager"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <title>Spotify Playlist Manager</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
+

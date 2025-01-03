@@ -1,0 +1,35 @@
+{
+  "name": "spotify-playlist-manager",
+  "version": "1.0.0",
+  "description": "Spotify Playlist Manager with brand-based playlist creation",
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
+  "scripts": {
+    "heroku-prebuild": "bash -c 'echo === PREBUILD START === && pwd && ls -la && if [ -d \"frontend\" ]; then cd frontend && npm install && echo === FRONTEND DEPENDENCIES INSTALLED ===; else echo ERROR: frontend directory not found && exit 1; fi'",
+    "heroku-postbuild": "bash -c 'echo === POSTBUILD START === && export NODE_ENV=production && pwd && ROOT_DIR=$(pwd) && cd frontend && npm run build && if [ ! -d \"build\" ]; then echo ERROR: Build failed - no build directory && exit 1; fi && echo === BUILD COMPLETED === && ls -la build/ && echo === COPYING FILES === && mkdir -p \"$ROOT_DIR/backend/static\" && rm -rf \"$ROOT_DIR/backend/static\"/* && cp -rv build/* \"$ROOT_DIR/backend/static/\" && echo === COPY COMPLETED === && if [ ! -f \"$ROOT_DIR/backend/static/index.html\" ]; then echo ERROR: index.html not found in static directory && exit 1; fi && ls -la \"$ROOT_DIR/backend/static/\"'",
+    "start": "bash -c 'echo === STARTING SERVER === && cd backend && STATIC_DIR=/app/backend/static PYTHONPATH=$PYTHONPATH:. gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --timeout 120 --access-logfile - --error-logfile - --log-level info'",
+    "dev": "concurrently \"cd backend && uvicorn main:app --reload\" \"cd frontend && npm start\"",
+    "build": "bash -c 'echo === LOCAL BUILD START === && cd frontend && npm run build && echo === LOCAL BUILD COMPLETE === && cd .. && mkdir -p backend/static && cp -r frontend/build/* backend/static/ && echo === FILES COPIED TO STATIC ==='",
+    "verify-static": "bash -c 'echo === VERIFYING STATIC FILES === && ls -la backend/static/ && if [ -f \"backend/static/index.html\" ]; then echo SUCCESS: index.html found; else echo ERROR: index.html not found; fi'"
+  },
+  "cacheDirectories": [
+    "frontend/node_modules"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sandman66666/playlistmgr.git"
+  },
+  "keywords": [
+    "spotify",
+    "playlist",
+    "fastapi",
+    "react"
+  ],
+  "author": "Session42",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

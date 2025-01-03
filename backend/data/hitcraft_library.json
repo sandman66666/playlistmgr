@@ -1,0 +1,256 @@
+{
+    "genres": [
+      {
+        "name": "K-Pop",
+        "category": "Pop",
+        "description": "K-Pop (short for 'Korean Pop') is a vibrant blend of catchy melodies, polished choreography, and slick production originating from South Korea. It often incorporates elements of hip-hop, EDM, and R&B, creating a modern pop sound that’s globally appealing. The genre is heavily influenced by fashion-forward visuals, elaborate music videos, and tight-knit fandoms.",
+        "tracks": [61, 65, 66, 70, 119, 120, 254, 275]
+      },
+      {
+        "name": "Teen Pop",
+        "category": "Pop",
+        "description": "Teen Pop typically targets a younger audience with light, upbeat tunes and relatable lyrics about friendship, love, and coming-of-age experiences. It’s known for its bubblegum-like hooks, easily digestible melodies, and danceable beats that reflect teenage life.",
+        "tracks": [19, 23, 27, 28, 29, 97, 113, 158]
+      },
+      {
+        "name": "Electropop / House",
+        "category": "Pop",
+        "description": "Electropop merges the melodic sensibilities of pop music with electronic beats and synthesizers. It features bright, polished production and catchy hooks, often accompanied by a four-on-the-floor house beat, making it popular in clubs and festivals.",
+        "tracks": [47, 48, 49, 73, 133, 134, 135, 243]
+      },
+      {
+        "name": "Classic Pop",
+        "category": "Pop",
+        "description": "Classic Pop describes timeless radio-friendly hits, usually from the 1950s through the 1980s. It encompasses polished, melodic recordings that shaped mainstream music, showcasing vocal-driven performances and memorable hooks.",
+        "tracks": [11, 26, 78, 79, 82, 83, 85, 86, 253, 255]
+      },
+      {
+        "name": "Reggaeton",
+        "category": "Pop",
+        "description": "Reggaeton originates from Latin America—particularly Puerto Rico and Panama—and merges dancehall reggae, hip-hop, and Latin beats. Known for its 'dembow' rhythm, it features Spanish or Spanglish lyrics and ranges from party anthems to socially conscious tracks.",
+        "tracks": [44, 45, 46, 67, 68, 69, 72, 204]
+      },
+      {
+        "name": "R&B Pop",
+        "category": "Pop",
+        "description": "R&B Pop blends modern rhythm and blues vocals and grooves with mainstream pop structures. Expect smooth singing, soulful melodies, and a blend of electronic production with classic R&B instrumentation.",
+        "tracks": [53, 54, 55, 76, 244]
+      },
+      {
+        "name": "Synthwave",
+        "category": "Pop",
+        "description": "Synthwave draws heavily from 1980s electronic film scores and retrofuturistic culture. Characterized by analog synths, vintage drum machines, and a nostalgic vibe, it often falls under the pop umbrella due to its melodic hooks.",
+        "tracks": [41, 42, 43, 62, 63, 64, 259]
+      },
+      {
+        "name": "Alternative Pop",
+        "category": "Pop",
+        "description": "Alternative Pop pushes the boundaries of mainstream pop with experimental production choices, introspective lyrics, and genre-blurring instrumentation. It retains pop’s catchy core but breaks away from standard commercial formulas.",
+        "tracks": [6, 13, 14, 80, 93]
+      },
+      {
+        "name": "Folk-Pop",
+        "category": "Pop",
+        "description": "Folk-Pop combines acoustic sounds and storytelling lyrics from folk traditions with accessible melodies and production typical of pop music. It usually features gentle strumming, heartfelt vocals, and catchy choruses.",
+        "tracks": [176, 177, 178, 179, 209, 220, 226, 261, 270, 271, 272]
+      },
+      {
+        "name": "Trap",
+        "category": "Hip-Hop",
+        "description": "Trap emerged from Southern hip-hop in the early 2000s, featuring 808 drum machines, fast hi-hats, and dark, atmospheric production. Lyrically, it often focuses on street life and hustling, though it has expanded into more melodic, mainstream variants.",
+        "tracks": [35, 39, 40, 122, 123, 124, 125, 127, 131, 132, 139, 142, 144, 145, 146, 147, 150, 152, 260]
+      },
+      {
+        "name": "Classic Hip-Hop 2000",
+        "category": "Hip-Hop",
+        "description": "This sub-genre refers to mainstream rap around the early 2000s—artists like 50 Cent, Nelly, or Eminem. Production was polished, beats were heavier, and R&B hooks became common, marking a bridge between the golden era and modern trap.",
+        "tracks": [36, 37, 38, 74, 149, 151, 156, 197]
+      },
+      {
+        "name": "Old-School Hip-Hop",
+        "category": "Hip-Hop",
+        "description": "Old-School Hip-Hop covers the late 1970s to the early 1990s, characterized by simpler beats, turntablism, breakbeats, and party-oriented lyrics. It often included social commentary and celebrated the emerging culture of hip-hop.",
+        "tracks": [50, 51, 52, 126, 128, 129, 130, 155]
+      },
+      {
+        "name": "Alternative Hip-Hop",
+        "category": "Hip-Hop",
+        "description": "Alternative Hip-Hop experiments with unconventional sounds, introspective lyrics, and influences from rock, jazz, electronica, and beyond. Artists focus on lyricism and creativity rather than mainstream hip-hop formulas.",
+        "tracks": [56, 60, 116, 117, 118, 121, 143, 154]
+      },
+      {
+        "name": "Rock/Pop",
+        "category": "Rock",
+        "description": "Rock/Pop sits at the intersection of rock and pop, featuring guitar-driven energy and polished production. Expect big choruses and radio-friendly hooks balanced with rock instrumentation.",
+        "tracks": [8, 9, 17, 96, 98, 258]
+      },
+      {
+        "name": "Pop-Punk",
+        "category": "Rock",
+        "description": "Pop-Punk blends punk rock’s fast tempos and rebellious attitude with catchy, pop-infused melodies. Lyrics often revolve around teenage angst, relationships, and suburban life, punctuated by singalong choruses.",
+        "tracks": [10, 12, 15, 257]
+      },
+      {
+        "name": "Alternative Guitar Rock",
+        "category": "Rock",
+        "description": "Alternative Guitar Rock focuses on guitar-led bands that adopt more experimental or underground sounds than mainstream rock. This can include elements of grunge, shoegaze, or post-punk, while retaining a guitar-centric approach.",
+        "tracks": [1]
+      },
+      {
+        "name": "Post Rock",
+        "category": "Rock",
+        "description": "Post Rock is known for atmospheric, mostly instrumental passages, featuring long builds, crescendos, and layered textures. Guitars are used more for soundscapes than traditional riffs.",
+        "tracks": [2, 169, 171, 173, 175]
+      },
+      {
+        "name": "Hard Rock",
+        "category": "Rock",
+        "description": "Hard Rock is characterized by driving drums, big riffs, and powerful vocals. It’s associated with a heavier guitar tone, energetic performances, and stadium-sized anthems.",
+        "tracks": [4, 5, 7, 102, 104, 256]
+      },
+      {
+        "name": "Folk Rock",
+        "category": "Rock",
+        "description": "Folk Rock fuses the acoustic instrumentation and storytelling of folk with the rhythmic drive and electrified sound of rock. Expect heartfelt lyrics, rich vocal harmonies, and a mix of acoustic and electric guitars.",
+        "tracks": [235, 268]
+      },
+      {
+        "name": "Soft Classic Rock",
+        "category": "Rock",
+        "description": "Soft Classic Rock highlights the mellower hits of the classic rock era (1970s–1980s), focusing on rich vocal harmonies and melodic instrumentation without heavy distortion or aggressive themes.",
+        "tracks": [105, 108, 110, 225, 237, 247, 263]
+      },
+      {
+        "name": "Power Classic Rock",
+        "category": "Rock",
+        "description": "Power Classic Rock emphasizes anthemic songs with big choruses, soaring vocals, and memorable guitar solos. It dominated arena stages with its loud, grandiose performances.",
+        "tracks": [114, 115, 159]
+      },
+      {
+        "name": "Thrash Metal",
+        "category": "Metal",
+        "description": "Thrash Metal is fast, aggressive, and driven by chugging riffs and intricate guitar solos. Emerging in the early 1980s with bands like Metallica and Slayer, it features intense drumming and shouted vocals.",
+        "tracks": [25, 166, 172]
+      },
+      {
+        "name": "Nu Metal",
+        "category": "Metal",
+        "description": "Nu Metal fuses metal, hip-hop, and sometimes electronic elements. Originating in the mid-late '90s, it often features downtuned guitars, rap-style vocals, angst-filled lyrics, and heavy grooves.",
+        "tracks": []
+      },
+      {
+        "name": "Classic Metal",
+        "category": "Metal",
+        "description": "Classic Metal (late ’70s–early ’80s) involves powerful, often high-pitched vocals, twin guitar harmonies, and a theatrical flair. Bands like Iron Maiden and Judas Priest helped define its sound.",
+        "tracks": [273, 274]
+      },
+      {
+        "name": "Modern Metal",
+        "category": "Metal",
+        "description": "Modern Metal is a broad term for contemporary heavy music, featuring progressive elements, technical precision, and often a blend of growled or screamed vocals with melodic singing. It can include electronic layers and complex song structures.",
+        "tracks": [221, 224, 227, 264]
+      },
+      {
+        "name": "Tech-House",
+        "category": "Electronic",
+        "description": "Tech-House is a minimalist style that sits between techno and house. It emphasizes crisp beats, hypnotic loops, and a driving bassline without big melodic breakdowns, focusing on subtle changes to keep the floor moving.",
+        "tracks": [198, 201, 202, 211]
+      },
+      {
+        "name": "Psy-Trance",
+        "category": "Electronic",
+        "description": "Psy-Trance is an offshoot of trance that emphasizes fast BPMs, layered psychedelic sounds, and cosmic atmospheres. Characterized by repetitive motifs and squelchy synths, it aims for a hypnotic, mind-bending experience.",
+        "tracks": []
+      },
+      {
+        "name": "Deep House",
+        "category": "Electronic",
+        "description": "Deep House stresses laid-back, soulful grooves. It features smooth basslines, atmospheric samples, and influences from jazz, funk, and soul, creating a more mellow vibe than traditional house.",
+        "tracks": [136, 137, 138]
+      },
+      {
+        "name": "Dubstep",
+        "category": "Electronic",
+        "description": "Dubstep is marked by heavy sub-bass, wobbly basslines, and half-time drum patterns. Originating from the UK garage scene, it often focuses on intense drops and a dark, futuristic atmosphere.",
+        "tracks": []
+      },
+      {
+        "name": "EDM - Trap",
+        "category": "Electronic",
+        "description": "EDM Trap fuses Southern hip-hop’s trap elements (808s, rapid hi-hats) with EDM’s festival-friendly buildups and drops. It’s geared towards high-energy crowds, often featuring dramatic drop sections.",
+        "tracks": [208]
+      },
+      {
+        "name": "Melodic Techno",
+        "category": "Electronic",
+        "description": "Melodic Techno merges techno’s steady pulse with lush, emotive synthesizers. It delivers a hypnotic, trance-like experience driven by evolving melodies, suitable for late-night or after-hours sets.",
+        "tracks": [206]
+      },
+      {
+        "name": "Afro-House",
+        "category": "Electronic",
+        "description": "Afro-House combines the four-on-the-floor house structure with African-inspired rhythms, percussion, and vocals. It brings organic, tribal elements to the dance floor, creating an infectious, culturally rich sound.",
+        "tracks": [193, 194, 196, 252]
+      },
+      {
+        "name": "Slap-House",
+        "category": "Electronic",
+        "description": "Slap-House gained prominence in the 2020s with a bouncy, 'slap' bassline and catchy vocal chops. It’s a pop-friendly dance style often found on streaming charts and in club sets.",
+        "tracks": [140, 141, 148]
+      },
+      {
+        "name": "Classic Country",
+        "category": "Country",
+        "description": "Classic Country spans the early to mid-20th century, highlighting acoustic arrangements and heartfelt themes of heartbreak, nostalgia, and storytelling. It includes icons like Hank Williams and Patsy Cline.",
+        "tracks": [21, 31, 32, 109, 111]
+      },
+      {
+        "name": "Modern Country",
+        "category": "Country",
+        "description": "Modern Country incorporates pop and rock influences into the traditional country framework. You’ll still hear twangy vocals and emotional lyrics, but production is slick and often radio-friendly.",
+        "tracks": [20, 24, 30, 34, 81, 84, 88, 89, 91, 92, 99, 100, 101, 103, 106, 187, 188]
+      },
+      {
+        "name": "Country Rock",
+        "category": "Country",
+        "description": "Country Rock merges country’s instrumentation and storytelling with the drive and electric edge of rock. Prominent drums, electric guitar solos, and anthemic choruses define this lively crossover style.",
+        "tracks": [22, 33, 95, 107, 112, 219]
+      },
+      {
+        "name": "Reggae",
+        "category": "Other",
+        "description": "Reggae originates from Jamaica, featuring offbeat guitar 'skanks,' laid-back rhythms, and a deep bassline. Often tied to social or spiritual themes, it projects a relaxed, uplifting groove.",
+        "tracks": [16, 18, 87, 90, 94, 266, 269]
+      },
+      {
+        "name": "Disco",
+        "category": "Other",
+        "description": "Disco was the dance music of the 1970s, marked by a four-on-the-floor beat, funk-inspired basslines, and orchestral elements. Think mirror balls, glamorous nightlife, and a feel-good party atmosphere.",
+        "tracks": [160, 161, 162, 163, 164, 265]
+      },
+      {
+        "name": "Funk",
+        "category": "Other",
+        "description": "Funk emphasizes groove, syncopated bass, and tight, rhythmic guitar. James Brown popularized the importance of 'the one,' focusing on danceable rhythms that highlight collective energy and soul.",
+        "tracks": []
+      },
+      {
+        "name": "Modern R&B",
+        "category": "Other",
+        "description": "Modern R&B merges traditional soul and R&B with contemporary production and hip-hop influences. It features smooth vocals, layered harmonies, and personal lyrics, often paired with electronic elements.",
+        "tracks": [75, 77, 182, 183, 189, 190, 207]
+      },
+      {
+        "name": "Soul",
+        "category": "Other",
+        "description": "Soul is rooted in gospel and R&B traditions, with heartfelt vocals and emotionally charged performances. Emerging in the 1950s and 1960s, it’s renowned for its power to convey deep feeling.",
+        "tracks": [165, 167, 168, 170, 174, 248]
+      },
+      {
+        "name": "Afrobeat",
+        "category": "Other",
+        "description": "Afrobeat was pioneered by Fela Kuti, blending West African music with jazz, funk, and highlife. Long jams, syncopated rhythms, and horn sections create a groovy, polyrhythmic sound with social or political themes.",
+        "tracks": [57, 58, 59, 153, 157, 276]
+      }
+    ]
+  }

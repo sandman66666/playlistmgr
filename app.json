@@ -1,0 +1,32 @@
+{
+    "name": "spotify-playlist-manager",
+    "description": "Spotify Playlist Manager with brand-based playlist creation",
+    "repository": "https://github.com/sandman66666/playlistmgr.git",
+    "keywords": ["python", "react", "spotify", "fastapi"],
+    "buildpacks": [
+      {
+        "url": "heroku/nodejs"
+      },
+      {
+        "url": "heroku/python"
+      }
+    ],
+    "env": {
+      "PYTHONPATH": {
+        "description": "Python path including backend directory",
+        "value": "/app"
+      },
+      "NODE_ENV": {
+        "description": "Node environment",
+        "value": "production"
+      },
+      "NPM_CONFIG_PRODUCTION": {
+        "description": "NPM production mode",
+        "value": "false"
+      },
+      "STATIC_DIR": {
+        "description": "Static files directory",
+        "value": "/app/backend/static"
+      }
+    }
+  }
