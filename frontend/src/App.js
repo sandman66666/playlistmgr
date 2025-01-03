@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import BrandPlaylist from './components/BrandPlaylist';
@@ -42,7 +42,7 @@ function App() {
       <Route path="/login" element={
         token ? <Navigate to="/dashboard" replace /> : <Login />
       } />
-      <Route path="/callback" element={<Callback />} />
+      <Route path="/auth" element={<Callback />} />
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />

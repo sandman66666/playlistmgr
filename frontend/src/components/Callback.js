@@ -12,32 +12,22 @@ function Callback() {
   useEffect(() => {
     const processCallback = async () => {
       try {
-        console.log('Processing callback with hash:', location.hash);
+        console.log('Processing callback with search:', location.search);
         
-        // Check for error in search params first
-        const searchParams = new URLSearchParams(location.search);
-        const searchError = searchParams.get('error');
-        if (searchError) {
-          throw new Error(searchError);
-        }
-
-        // Get token info from hash fragment
-        // Remove '#/auth?' prefix to get just the params
-        const hashString = location.hash.substring(2); // Remove '/#' prefix
-        console.log('Parsed hash string:', hashString);
+        // With HashRouter, the parameters will be in location.search
+        const params = new URLSearchParams(location.search);
         
-        const hashParams = new URLSearchParams(hashString);
-        const error = hashParams.get('error');
-        
+        // Check for error
+        const error = params.get('error');
         if (error) {
           throw new Error(error);
         }
 
-        // Get token info from hash params
-        const access_token = hashParams.get('access_token');
-        const refresh_token = hashParams.get('refresh_token');
-        const expires_in = hashParams.get('expires_in');
-        const expires_at = hashParams.get('expires_at');
+        // Get token info
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        const expires_in = params.get('expires_in');
+        const expires_at = params.get('expires_at');
 
         console.log('Extracted tokens:', { 
           hasAccessToken: !!access_token,
@@ -70,7 +60,7 @@ function Callback() {
     };
 
     processCallback();
-  }, [location.search, location.hash, setTokenInfo]);
+  }, [location.search, setTokenInfo]);
 
   if (!isProcessing && error) {
     return (
