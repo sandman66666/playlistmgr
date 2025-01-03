@@ -12,25 +12,30 @@ function Login() {
     if (loading) return;
     
     try {
+      console.log('Initiating login process...');
       setError('');
       setLoading(true);
 
       // Get login URL from backend
+      console.log('Fetching login URL from:', `${config.apiBaseUrl}/auth/login`);
       const response = await fetch(`${config.apiBaseUrl}/auth/login`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        credentials: 'include'
+        }
       });
       
       if (!response.ok) {
-        throw new Error('Failed to get login URL');
+        const errorText = await response.text();
+        console.error('Login URL fetch failed:', response.status, errorText);
+        throw new Error(`Failed to get login URL: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('Received auth data:', { hasAuthUrl: !!data.auth_url });
+      
       if (!data.auth_url) {
-        throw new Error('Invalid login URL');
+        throw new Error('Invalid login URL received from server');
       }
 
       // Extract state parameter from auth_url
@@ -39,19 +44,22 @@ function Login() {
       if (state) {
         // Save state in localStorage for CSRF protection
         localStorage.setItem('spotify_auth_state', state);
+        console.log('Saved auth state to localStorage');
       }
 
+      console.log('Redirecting to Spotify authorization URL...');
       // Directly navigate to Spotify's authorization URL
-      window.location.assign(data.auth_url);
+      window.location.href = data.auth_url;
     } catch (error) {
-      console.error('Login error:', error);
-      setError(error.message);
+      console.error('Login process failed:', error);
+      setError(error.message || 'Failed to connect to Spotify');
       setLoading(false);
     }
   }, [loading]);
 
   // If already logged in, redirect to dashboard
   if (token) {
+    console.log('User already has token, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 

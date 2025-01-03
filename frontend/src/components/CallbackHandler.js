@@ -5,46 +5,84 @@ import config from '../config';
 
 function CallbackHandler() {
   const navigate = useNavigate();
-  const { token, setToken } = useAuth();
+  const { token, setTokenInfo } = useAuth();
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const handleCallback = async () => {
+      console.log('CallbackHandler: Starting auth callback processing');
+      
       // If we already have a token, redirect to dashboard
       if (token) {
+        console.log('CallbackHandler: Token already exists, redirecting to dashboard');
         navigate('/dashboard');
         return;
       }
 
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      const incomingState = params.get('state');
-      const error = params.get('error');
+      try {
+        // First, try to handle hash-based auth (direct from backend)
+        if (window.location.hash) {
+          console.log('CallbackHandler: Processing hash-based auth');
+          let paramString = window.location.hash;
+          
+          // Remove the initial '#' or '#/auth?'
+          if (paramString.startsWith('#/auth?')) {
+            paramString = paramString.replace('#/auth?', '');
+          } else if (paramString.startsWith('#')) {
+            paramString = paramString.substring(1);
+          }
 
-      // Get stored state from localStorage
-      const storedState = localStorage.getItem('spotify_auth_state');
+          const params = new URLSearchParams(paramString);
+          const access_token = params.get('access_token');
+          const refresh_token = params.get('refresh_token');
+          const expires_in = params.get('expires_in');
+          const expires_at = params.get('expires_at');
 
-      // Clear URL parameters and stored state
-      window.history.replaceState({}, document.title, window.location.pathname);
-      localStorage.removeItem('spotify_auth_state');
+          console.log('CallbackHandler: Extracted token info:', {
+            hasAccessToken: !!access_token,
+            hasRefreshToken: !!refresh_token,
+            expiresIn: expires_in,
+            expiresAt: expires_at
+          });
 
-      if (error) {
-        console.error('Auth error:', error);
-        setError(`Authentication error: ${error}`);
-        setTimeout(() => navigate('/login'), 3000);
-        return;
-      }
+          if (access_token && refresh_token) {
+            const tokenInfo = {
+              access_token,
+              refresh_token,
+              expires_in: parseInt(expires_in, 10),
+              expires_at: parseInt(expires_at, 10)
+            };
 
-      if (!incomingState || !storedState || incomingState !== storedState) {
-        console.error('State mismatch or missing state parameter');
-        setError('Invalid state parameter. Please try logging in again.');
-        setTimeout(() => navigate('/login'), 3000);
-        return;
-      }
+            // Store token info
+            localStorage.setItem('spotify_token', JSON.stringify(tokenInfo));
+            setTokenInfo(tokenInfo);
+            console.log('CallbackHandler: Token info stored, redirecting to dashboard');
+            navigate('/dashboard');
+            return;
+          }
+        }
 
-      if (code) {
-        try {
-          console.log('Exchanging code for token...');
+        // If no hash params, try query-based auth
+        const queryParams = new URLSearchParams(window.location.search);
+        const code = queryParams.get('code');
+        const incomingState = queryParams.get('state');
+        const queryError = queryParams.get('error');
+
+        if (queryError) {
+          console.error('CallbackHandler: Auth error from query params:', queryError);
+          throw new Error(`Authentication error: ${queryError}`);
+        }
+
+        // Get stored state from localStorage
+        const storedState = localStorage.getItem('spotify_auth_state');
+
+        if (code) {
+          if (!incomingState || !storedState || incomingState !== storedState) {
+            console.error('CallbackHandler: State mismatch or missing state parameter');
+            throw new Error('Invalid state parameter. Please try logging in again.');
+          }
+
+          console.log('CallbackHandler: Exchanging code for token...');
           const response = await fetch(`${config.apiBaseUrl}${config.endpoints.auth.callback}?code=${code}&state=${incomingState}`, {
             method: 'GET',
             headers: {
@@ -58,31 +96,36 @@ function CallbackHandler() {
           }
 
           const data = await response.json();
-          console.log('Token exchange successful');
+          console.log('CallbackHandler: Token exchange successful');
 
           if (data.access_token) {
-            // Store token data
-            localStorage.setItem('spotify_token', JSON.stringify({
+            const tokenInfo = {
               access_token: data.access_token,
               refresh_token: data.refresh_token,
               expires_at: data.expires_at
-            }));
+            };
             
-            setToken(data.access_token);
+            localStorage.setItem('spotify_token', JSON.stringify(tokenInfo));
+            setTokenInfo(tokenInfo);
             navigate('/dashboard');
           } else {
             throw new Error('No access token in response');
           }
-        } catch (error) {
-          console.error('Error exchanging code for token:', error);
-          setError(error.message);
-          setTimeout(() => navigate('/login'), 3000);
         }
+
+        // Clear URL parameters and stored state
+        window.history.replaceState({}, document.title, window.location.pathname);
+        localStorage.removeItem('spotify_auth_state');
+
+      } catch (error) {
+        console.error('CallbackHandler: Error processing callback:', error);
+        setError(error.message);
+        setTimeout(() => navigate('/login'), 3000);
       }
     };
 
     handleCallback();
-  }, [token, setToken, navigate]);
+  }, [token, setTokenInfo, navigate]);
 
   if (error) {
     return (

@@ -3,7 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'reac
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import BrandPlaylist from './components/BrandPlaylist';
-import Callback from './components/Callback';
+import CallbackHandler from './components/CallbackHandler';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Protected Route component
@@ -42,7 +42,7 @@ function App() {
       <Route path="/login" element={
         token ? <Navigate to="/dashboard" replace /> : <Login />
       } />
-      <Route path="/auth" element={<Callback />} />
+      <Route path="/auth" element={<CallbackHandler />} />
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
